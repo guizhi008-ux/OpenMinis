@@ -33,6 +33,36 @@ struct ProxySettingsView: View {
             }
 
             Section {
+                Picker("路由模式", selection: $settings.routingMode) {
+                    Text("配置分流").tag("config")
+                    Text("全局代理").tag("global")
+                }
+                .pickerStyle(.segmented)
+                if settings.routingMode == "config" {
+                    Text("强制直连域名（每行一个，如 example.cn）")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextEditor(text: $settings.directDomainsText)
+                        .frame(height: 72)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                    Text("强制走代理域名（每行一个，如 example.com）")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextEditor(text: $settings.proxyDomainsText)
+                        .frame(height: 72)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                }
+            } header: {
+                Text("路由")
+            } footer: {
+                Text(settings.routingMode == "config"
+                    ? "配置分流：国内网站和国内 IP 直连，其余走代理，和小火箭的「配置」模式一致；上面两个名单优先于内置规则。改完记得重启内核。"
+                    : "全局代理：除局域网地址外，全部流量走代理。改完记得重启内核。")
+            }
+
+            Section {
                 TextField("粘贴 ss:// 或 vless:// 节点链接", text: $linkText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled(true)
