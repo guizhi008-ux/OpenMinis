@@ -246,7 +246,7 @@ enum MCPOAuthDiscovery {
 
         let (_, response): (Data, URLResponse)
         do {
-            (_, response) = try await URLSession.shared.data(for: req)
+            (_, response) = try await ProxySupport.session.data(for: req)
         } catch {
             throw DiscoveryError.network(error.localizedDescription)
         }
@@ -322,7 +322,7 @@ enum MCPOAuthDiscovery {
 
         let (respData, response): (Data, URLResponse)
         do {
-            (respData, response) = try await URLSession.shared.data(for: req)
+            (respData, response) = try await ProxySupport.session.data(for: req)
         } catch {
             throw DiscoveryError.network(error.localizedDescription)
         }
@@ -347,7 +347,7 @@ enum MCPOAuthDiscovery {
         req.timeoutInterval = 20
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: req)
+            (data, response) = try await ProxySupport.session.data(for: req)
         } catch {
             throw DiscoveryError.network(error.localizedDescription)
         }
