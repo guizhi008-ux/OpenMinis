@@ -428,6 +428,10 @@
 		E5SCH0002 /* ScheduledOffload.m in Sources */ = {isa = PBXBuildFile; fileRef = E5SCH0012 /* ScheduledOffload.m */; };
 		E5SCH0003 /* ScheduledOffloadBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SCH0013 /* ScheduledOffloadBridge.swift */; };
 		E5SCH0004 /* HelperSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SCH0014 /* HelperSettingsView.swift */; };
+		PRXB0001 /* ProxySettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = PRXF0001 /* ProxySettings.swift */; };
+		PRXB0002 /* ProxyCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = PRXF0002 /* ProxyCore.swift */; };
+		PRXB0003 /* ProxySupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = PRXF0003 /* ProxySupport.swift */; };
+		PRXB0004 /* ProxySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PRXF0004 /* ProxySettingsView.swift */; };
 		E5SD00009 /* ShortcutRunTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SD00019 /* ShortcutRunTracker.swift */; };
 		E5SDS0001 /* SessionDeletionSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SDS0011 /* SessionDeletionSupport.swift */; };
 		E5SEV0001 /* SaveEnvVarIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SEV0011 /* SaveEnvVarIntent.swift */; };
@@ -1252,6 +1256,10 @@
 		E5SCH0012 /* ScheduledOffload.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ScheduledOffload.m; sourceTree = "<group>"; };
 		E5SCH0013 /* ScheduledOffloadBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledOffloadBridge.swift; sourceTree = "<group>"; };
 		E5SCH0014 /* HelperSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperSettingsView.swift; sourceTree = "<group>"; };
+		PRXF0001 /* ProxySettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../../Proxy/ProxySettings.swift; sourceTree = "<group>"; };
+		PRXF0002 /* ProxyCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../../Proxy/ProxyCore.swift; sourceTree = "<group>"; };
+		PRXF0003 /* ProxySupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../../Proxy/ProxySupport.swift; sourceTree = "<group>"; };
+		PRXF0004 /* ProxySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../../Proxy/ProxySettingsView.swift; sourceTree = "<group>"; };
 		E5SD00019 /* ShortcutRunTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRunTracker.swift; sourceTree = "<group>"; };
 		E5SDS0011 /* SessionDeletionSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDeletionSupport.swift; sourceTree = "<group>"; };
 		E5SEV0011 /* SaveEnvVarIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveEnvVarIntent.swift; sourceTree = "<group>"; };
@@ -2624,6 +2632,10 @@
 				E5CVSET0000000000000A011 /* SettingsSheet.swift */,
 				E5CVSET0000000000000A012 /* AppearanceSettingsView.swift */,
 				E5SCH0014 /* HelperSettingsView.swift */,
+				PRXF0001 /* ProxySettings.swift */,
+				PRXF0002 /* ProxyCore.swift */,
+				PRXF0003 /* ProxySupport.swift */,
+				PRXF0004 /* ProxySettingsView.swift */,
 				E5TLS0011 /* ToolsSettingsView.swift */,
 				E5LOCK102 /* FaceIDProtectionSettingsView.swift */,
 				E5LOCK103 /* AppLockOverlay.swift */,
@@ -3202,6 +3214,10 @@
 				E5SCH0002 /* ScheduledOffload.m in Sources */,
 				E5SCH0003 /* ScheduledOffloadBridge.swift in Sources */,
 				E5SCH0004 /* HelperSettingsView.swift in Sources */,
+				PRXB0001 /* ProxySettings.swift in Sources */,
+				PRXB0002 /* ProxyCore.swift in Sources */,
+				PRXB0003 /* ProxySupport.swift in Sources */,
+				PRXB0004 /* ProxySettingsView.swift in Sources */,
 				E5TLS0001 /* ToolsSettingsView.swift in Sources */,
 				E5VMB0002 /* AIChatViewModel+Fallback.swift in Sources */,
 				E5VMB0003 /* AIChatViewModel+Misc.swift in Sources */,
