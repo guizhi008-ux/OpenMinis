@@ -42,9 +42,13 @@ func MinisXrayStart(configJSON *C.char) *C.char {
 		_ = minisXrayInstance.Close()
 		minisXrayInstance = nil
 	}
-	cfg, err := serial.DecodeJSONConfig(strings.NewReader(C.GoString(configJSON)))
+	confCfg, err := serial.DecodeJSONConfig(strings.NewReader(C.GoString(configJSON)))
 	if err != nil {
 		return C.CString("config: " + err.Error())
+	}
+	cfg, err := confCfg.Build()
+	if err != nil {
+		return C.CString("build: " + err.Error())
 	}
 	inst, err := core.New(cfg)
 	if err != nil {
