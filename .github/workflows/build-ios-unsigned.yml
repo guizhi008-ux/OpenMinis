@@ -32,9 +32,9 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install ninja llvm libarchive pkg-config go
-          pip3 install meson
+          brew install ninja llvm libarchive pkg-config go meson
           go version
+          meson --version
 
       - name: "Build native deps (order matters: LAME -> FFmpeg)"
         run: |
