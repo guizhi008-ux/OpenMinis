@@ -6,6 +6,7 @@ package main
 import "C"
 
 import (
+	"os"
 	"strings"
 	"sync"
 
@@ -54,6 +55,17 @@ func MinisXrayStart(configJSON *C.char) *C.char {
 	}
 	minisXrayInstance = inst
 	return C.CString("")
+}
+
+// MinisXraySetAssetDir points Xray's geo-data loader (geoip.dat /
+// geosite.dat, bundled as app resources) at the given directory. Must be
+// called before MinisXrayStart for rule modes that reference geo data.
+//
+//export MinisXraySetAssetDir
+func MinisXraySetAssetDir(dir *C.char) {
+	if dir != nil {
+		_ = os.Setenv("XRAY_LOCATION_ASSET", C.GoString(dir))
+	}
 }
 
 //export MinisXrayStop
