@@ -32,9 +32,17 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install ninja llvm lld libarchive pkg-config go meson
-          go version
+          brew install ninja llvm lld libarchive pkg-config meson
           meson --version
+
+      - name: Set up Go 1.25 (rclone-mobile go.mod pins go 1.25.5)
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Show Go version
+        run: go version
 
       - name: "Build native deps (order matters: LAME -> FFmpeg)"
         run: |
