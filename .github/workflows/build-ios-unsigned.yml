@@ -1,0 +1,66 @@
+# OpenMinis — 在线云 Mac 编译（GitHub Actions，公开仓库免费）
+# 用途：先验证原版源码能在云端编过，产出未签名 .app 工件。
+# 注意：未签名 .app 不能直接装到 iPhone，后续还需用你自己的 Apple ID 重签（见聊天说明）。
+# 用法：把本文件放到你 Fork 的仓库 .github/workflows/ 目录，Actions 页手动 Run workflow。
+
+name: build-ios-unsigned
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 350
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show available Xcode versions
+        run: |
+          ls /Applications | grep -i xcode || true
+          xcodebuild -version || true
+
+      - name: Select newest Xcode 26.x if present
+        run: |
+          APP=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          if [ -n "$APP" ]; then sudo xcode-select -s "$APP"; fi
+          xcodebuild -version
+          xcodebuild -downloadComponent MetalToolchain || true
+
+      - name: Install build tools
+        run: |
+          brew install ninja llvm libarchive pkg-config go
+          pip3 install meson
+          go version
+
+      - name: "Build native deps (order matters: LAME -> FFmpeg)"
+        run: |
+          ./deps/build_lame.sh
+          ./deps/build_ffmpeg.sh
+          ./deps/build_ish.sh
+          ./deps/prepare_alpine_rootfs.sh
+          ./deps/build_rclone_ios.sh
+
+      - name: Build app (unsigned)
+        run: |
+          xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis \
+            -configuration Debug -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DD \
+            CODE_SIGNING_ALLOWED=NO build
+
+      - name: Package .app artifact
+        run: |
+          APP=$(find build/DD -name "*.app" -maxdepth 6 | head -1)
+          echo "Found app: $APP"
+          ditto -c -k --keepParent "$APP" Minis-unsigned-app.zip
+          ls -lh Minis-unsigned-app.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Minis-unsigned-app
+          path: Minis-unsigned-app.zip
+          retention-days: 7
