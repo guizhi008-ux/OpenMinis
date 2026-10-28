@@ -50,6 +50,7 @@ jobs:
           ./deps/build_ffmpeg.sh
           ./deps/build_ish.sh
           ./deps/prepare_alpine_rootfs.sh
+          (cd deps/rclone-mobile && go mod tidy)
           ./deps/build_rclone_ios.sh
 
       - name: Prepare provider customization config
