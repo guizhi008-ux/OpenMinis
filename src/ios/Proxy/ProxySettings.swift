@@ -28,6 +28,20 @@ final class ProxySettings: ObservableObject {
         didSet { defaults.set(nodeName, forKey: "minis.proxy.name") }
     }
 
+    /// Routing mode: "config" = Shadowrocket-style split routing (domestic
+    /// direct, everything else via the node, custom lists first);
+    /// "global" = everything via the node except private/LAN ranges.
+    @Published var routingMode: String {
+        didSet { defaults.set(routingMode, forKey: "minis.proxy.routingMode") }
+    }
+    /// One domain suffix per line; matched before the built-in CN rules.
+    @Published var directDomainsText: String {
+        didSet { defaults.set(directDomainsText, forKey: "minis.proxy.directDomains") }
+    }
+    @Published var proxyDomainsText: String {
+        didSet { defaults.set(proxyDomainsText, forKey: "minis.proxy.proxyDomains") }
+    }
+
     // Shadowsocks
     @Published var ssServer: String {
         didSet { defaults.set(ssServer, forKey: "minis.proxy.ss.server") }
@@ -81,6 +95,9 @@ final class ProxySettings: ObservableObject {
         enabled = d.bool(forKey: "minis.proxy.enabled")
         protocolRaw = d.string(forKey: "minis.proxy.protocol") ?? MinisProxyProtocol.ss.rawValue
         nodeName = d.string(forKey: "minis.proxy.name") ?? ""
+        routingMode = d.string(forKey: "minis.proxy.routingMode") ?? "config"
+        directDomainsText = d.string(forKey: "minis.proxy.directDomains") ?? ""
+        proxyDomainsText = d.string(forKey: "minis.proxy.proxyDomains") ?? ""
         ssServer = d.string(forKey: "minis.proxy.ss.server") ?? ""
         ssPort = d.integer(forKey: "minis.proxy.ss.port")
         ssMethod = d.string(forKey: "minis.proxy.ss.method") ?? "aes-256-gcm"
@@ -94,6 +111,15 @@ final class ProxySettings: ObservableObject {
         vlessPublicKey = d.string(forKey: "minis.proxy.vless.pbk") ?? ""
         vlessShortID = d.string(forKey: "minis.proxy.vless.sid") ?? ""
         vlessFingerprint = d.string(forKey: "minis.proxy.vless.fp") ?? "chrome"
+    }
+
+    var directDomains: [String] { Self.parseDomainList(directDomainsText) }
+    var proxyDomains: [String] { Self.parseDomainList(proxyDomainsText) }
+
+    private static func parseDomainList(_ text: String) -> [String] {
+        text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
     }
 
     var isConfigured: Bool {
