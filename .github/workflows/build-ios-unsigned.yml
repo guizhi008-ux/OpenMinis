@@ -32,7 +32,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install ninja llvm libarchive pkg-config go meson
+          brew install ninja llvm lld libarchive pkg-config go meson
           go version
           meson --version
 
