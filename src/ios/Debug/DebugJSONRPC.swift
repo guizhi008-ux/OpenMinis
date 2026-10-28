@@ -2667,6 +2667,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         config.timeoutIntervalForRequest = 8.0
         config.timeoutIntervalForResource = 10.0
         config.waitsForConnectivity = false
+        ProxySupport.apply(to: config)
         let session = URLSession(configuration: config)
 
         do {
