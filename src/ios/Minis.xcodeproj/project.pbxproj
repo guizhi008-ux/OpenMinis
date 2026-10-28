@@ -38,6 +38,8 @@
 		AA0838D22F3B941A00049557 /* RootfsPatch.bundle in Resources */ = {isa = PBXBuildFile; fileRef = AA0838D32F3B941A00049557 /* RootfsPatch.bundle */; };
 		AA0838FF2F3B941A00049557 /* MirrorSpeedTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0838FE2F3B941A00049557 /* MirrorSpeedTestView.swift */; };
 		AA26CCB72F31067900AECF2D /* alpine-rootfs.zip in Resources */ = {isa = PBXBuildFile; fileRef = AA26CCB62F31067900AECF2D /* alpine-rootfs.zip */; };
+		PRXB0005 /* geoip.dat in Resources */ = {isa = PBXBuildFile; fileRef = PRXF0005 /* geoip.dat */; };
+		PRXB0006 /* geosite.dat in Resources */ = {isa = PBXBuildFile; fileRef = PRXF0006 /* geosite.dat */; };
 		AA26CCB92F31070A00AECF2D /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = AA26CCB82F31070A00AECF2D /* libsqlite3.tbd */; };
 		AA26CCBA2F31080100AECF2D /* ISHKernel.m in Sources */ = {isa = PBXBuildFile; fileRef = AA26CCBB2F31080100AECF2D /* ISHKernel.m */; };
 		AA26CCBC2F31080100AECF2D /* ISHTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA26CCBD2F31080100AECF2D /* ISHTerminalView.swift */; };
@@ -814,6 +816,8 @@
 		AA26BD652F2E663700AECF2D /* gsttag-1.0.0.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = "gsttag-1.0.0.framework"; path = "../../build/frameworks/gsttag-1.0.0.framework"; sourceTree = "<group>"; };
 		AA26BD662F2E663700AECF2D /* soup-3.0.0.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = "soup-3.0.0.framework"; path = "../../build/frameworks/soup-3.0.0.framework"; sourceTree = "<group>"; };
 		AA26CCB62F31067900AECF2D /* alpine-rootfs.zip */ = {isa = PBXFileReference; lastKnownFileType = archive.zip; name = "alpine-rootfs.zip"; path = "../../deps/resources/alpine-rootfs.zip"; sourceTree = SOURCE_ROOT; };
+		PRXF0005 /* geoip.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = "geoip.dat"; path = "../../deps/resources/geoip.dat"; sourceTree = SOURCE_ROOT; };
+		PRXF0006 /* geosite.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = "geosite.dat"; path = "../../deps/resources/geosite.dat"; sourceTree = SOURCE_ROOT; };
 		AA26CCB82F31070A00AECF2D /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		AA26CCBB2F31080100AECF2D /* ISHKernel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ISHKernel.m; sourceTree = "<group>"; };
 		AA26CCBB2F324FE400AECF2D /* FileBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileBrowserView.swift; sourceTree = "<group>"; };
@@ -1953,6 +1957,8 @@
 				E55000012 /* ISHShellExecutor.m */,
 				AA26CCBF2F31080100AECF2D /* RootfsManager.swift */,
 				AA26CCB62F31067900AECF2D /* alpine-rootfs.zip */,
+				PRXF0005 /* geoip.dat */,
+				PRXF0006 /* geosite.dat */,
 				AA0838D32F3B941A00049557 /* RootfsPatch.bundle */,
 			);
 			path = iSH;
@@ -2973,6 +2979,8 @@
 			files = (
 				E51000004 /* Preview Assets.xcassets in Resources */,
 				AA26CCB72F31067900AECF2D /* alpine-rootfs.zip in Resources */,
+				PRXB0005 /* geoip.dat in Resources */,
+				PRXB0006 /* geosite.dat in Resources */,
 				E5BSH0004 /* bashism_rules.json in Resources */,
 				E5BSH0005 /* bashism_test_vectors.json in Resources */,
 				AA0838D22F3B941A00049557 /* RootfsPatch.bundle in Resources */,
