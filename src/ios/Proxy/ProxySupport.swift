@@ -11,13 +11,13 @@ enum ProxySupport {
     static func apply(to config: URLSessionConfiguration, force: Bool = false) {
         let settings = ProxySettings.shared
         guard settings.isConfigured, force || settings.enabled else { return }
+        // iOS has no HTTPS-specific proxy keys (they are macOS-only and
+        // marked unavailable in iOS). The HTTP entry alone is enough:
+        // URLSession sends HTTPS via HTTP CONNECT through the same proxy.
         config.connectionProxyDictionary = [
             kCFNetworkProxiesHTTPEnable as String: 1,
             kCFNetworkProxiesHTTPProxy as String: "127.0.0.1",
             kCFNetworkProxiesHTTPPort as String: ProxyCore.httpPort,
-            kCFNetworkProxiesHTTPSEnable as String: 1,
-            kCFNetworkProxiesHTTPSProxy as String: "127.0.0.1",
-            kCFNetworkProxiesHTTPSPort as String: ProxyCore.httpPort,
         ]
     }
 
