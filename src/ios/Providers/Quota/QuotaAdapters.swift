@@ -131,6 +131,7 @@ final class QuotaURLSessionTransport: QuotaHTTPTransport, @unchecked Sendable {
         cfg.urlCache = nil
         cfg.httpCookieStorage = nil
         cfg.httpShouldSetCookies = false
+        ProxySupport.apply(to: cfg)
         session = URLSession(configuration: cfg)
     }
 
