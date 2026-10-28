@@ -25,6 +25,7 @@ class VoiceProvider: VoiceInputCapable, VoiceOutputCapable {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 120
         config.timeoutIntervalForResource = 120
+        ProxySupport.apply(to: config)
         return URLSession(configuration: config)
     }()
 
