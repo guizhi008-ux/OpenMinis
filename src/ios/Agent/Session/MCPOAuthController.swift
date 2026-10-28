@@ -462,7 +462,7 @@ final class MCPOAuthController: NSObject, ObservableObject {
         req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         req.httpBody = form.map { "\($0.key)=\(Self.formEncode($0.value))" }
             .joined(separator: "&").data(using: .utf8)
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        let (data, resp) = try await ProxySupport.session.data(for: req)
         guard let http = resp as? HTTPURLResponse, http.statusCode < 400 else {
             let body = String(data: data, encoding: .utf8)?.prefix(200) ?? ""
             logger.error("[Authorize] '\(server)' token exchange HTTP \((resp as? HTTPURLResponse)?.statusCode ?? -1)")
