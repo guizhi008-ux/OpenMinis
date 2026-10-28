@@ -136,6 +136,9 @@ struct MinisApp: App {
         // this run's ring + 15 s resource sampling, before anything else runs.
         CrashBreadcrumbs.start()
         ResourceSampler.shared.start()
+        // [Proxy] Bring the embedded Xray core up early when enabled,
+        // so provider sessions created afterwards find it listening.
+        ProxySupport.startCoreIfEnabled()
         // [T-auto-grouping-default-on] Auto-grouping ships ON. `bool(forKey:)`
         // returns false for an unregistered key, so the default has to be
         // registered here rather than expressed at the (multiple) read sites —
