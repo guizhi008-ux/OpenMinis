@@ -14,6 +14,7 @@ private let thinkingLogger = AppLogger(category: "Thinking")
 private let geminiStreamingSession: URLSession = {
     let config = URLSessionConfiguration.default
     config.timeoutIntervalForRequest = 600  // 10 minutes
+    ProxySupport.apply(to: config)
     let session = URLSession(configuration: config)
     // Evict this session's pooled (possibly stale) connections on network
     // transitions — see LLMSessionRegistry / Android #740.
