@@ -85,6 +85,7 @@ final class OAuthHTTPClient: HTTPClient {
         config.protocolClasses = [OAuthURLProtocol.self]
         config.httpAdditionalHeaders = (config.httpAdditionalHeaders ?? [:]).merging(
             ["X-Minis-OAuth-UUID": rid]) { _, new in new }
+        ProxySupport.apply(to: config)
         let session = URLSession(configuration: config)
         self.underlying = URLSessionHTTPClientAdapter(urlSession: session)
     }
@@ -613,6 +614,7 @@ let anthropicRequestIdleTimeout: TimeInterval = 600
 func makeInnerProtocolSession(delegate: URLSessionDataDelegate) -> URLSession {
     let config = URLSessionConfiguration.default
     config.timeoutIntervalForRequest = anthropicRequestIdleTimeout
+    ProxySupport.apply(to: config)
     return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
 }
 
@@ -1731,6 +1733,7 @@ final class EagerStreamingHTTPClient: HTTPClient {
             config.httpAdditionalHeaders = (config.httpAdditionalHeaders ?? [:]).merging(
                 ["User-Agent": ua]) { _, new in new }
         }
+        ProxySupport.apply(to: config)
         let session = URLSession(configuration: config)
         self.underlying = URLSessionHTTPClientAdapter(urlSession: session)
     }
@@ -1758,6 +1761,7 @@ final class DualAuthHTTPClient: HTTPClient {
             config.httpAdditionalHeaders = (config.httpAdditionalHeaders ?? [:]).merging(
                 ["User-Agent": ua]) { _, new in new }
         }
+        ProxySupport.apply(to: config)
         let session = URLSession(configuration: config)
         self.underlying = URLSessionHTTPClientAdapter(urlSession: session)
     }
