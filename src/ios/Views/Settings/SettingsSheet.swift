@@ -131,6 +131,19 @@ struct SettingsSheet: View {
                         }
                     }
                     NavigationLink {
+                        ProxySettingsView()
+                    } label: {
+                        Label {
+                            Text("代理")
+                        } icon: {
+                            Image(systemName: "network")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.white)
+                                .frame(width: 21, height: 21)
+                                .background(.teal, in: Circle())
+                        }
+                    }
+                    NavigationLink {
                         SkillsManagementView()
                     } label: {
                         Label {
