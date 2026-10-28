@@ -39,6 +39,7 @@ private func resolvedAPIBase(_ base: String, appendV1: Bool) -> String {
 private let streamingSession: URLSession = {
     let config = URLSessionConfiguration.default
     config.timeoutIntervalForRequest = 600  // 10 minutes
+    ProxySupport.apply(to: config)
     let session = URLSession(configuration: config)
     // Evict this session's pooled (possibly stale) connections on network
     // transitions — see LLMSessionRegistry / Android #740.
@@ -80,6 +81,7 @@ private func makeStreamingSession() -> URLSession {
     config.timeoutIntervalForRequest = 600  // 10 minutes — matches the shared session
     // One stream per session, so there is no second connection to pool.
     config.httpMaximumConnectionsPerHost = 1
+    ProxySupport.apply(to: config)
     return URLSession(configuration: config)
 }
 
@@ -649,7 +651,7 @@ final class OpenAIProvider: LLMProvider {
             stream: false
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await ProxySupport.session.data(for: request)
         let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
 
         guard (200..<300).contains(statusCode) else {
