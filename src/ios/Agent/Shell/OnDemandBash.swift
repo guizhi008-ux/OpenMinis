@@ -140,7 +140,7 @@ actor OnDemandBash {
         req.httpMethod = "HEAD"
         req.timeoutInterval = 5
         do {
-            let (_, resp) = try await URLSession.shared.data(for: req)
+            let (_, resp) = try await ProxySupport.session.data(for: req)
             if let http = resp as? HTTPURLResponse { return (200..<500).contains(http.statusCode) }
             return true
         } catch {
