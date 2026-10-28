@@ -50,7 +50,7 @@ jobs:
           ./deps/build_ffmpeg.sh
           ./deps/build_ish.sh
           ./deps/prepare_alpine_rootfs.sh
-          (cd deps/rclone-mobile && go get github.com/xtls/xray-core@v1.260206.0 && go mod tidy)
+          (cd deps/rclone-mobile && go get github.com/xtls/xray-core@v1.260206.0 && go mod edit -replace gvisor.dev/gvisor=gvisor.dev/gvisor@v0.0.0-20250205023644-9414b50a5633 && go mod tidy)
           ./deps/build_rclone_ios.sh
 
       - name: Fetch geo data for proxy routing
