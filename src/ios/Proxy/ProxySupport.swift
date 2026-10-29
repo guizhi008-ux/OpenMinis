@@ -121,6 +121,10 @@ enum ProxySupport {
     /// the idle watchdog is armed here.
     static func startCoreIfEnabled() {
         let settings = ProxySettings.shared
+        // Reconcile: in on-demand mode the master switch is forced on.
+        if settings.autoMode, !settings.enabled {
+            settings.enabled = true
+        }
         guard settings.enabled, settings.isConfigured else { return }
         startIdleWatchdog()
         guard !settings.autoMode else { return }
