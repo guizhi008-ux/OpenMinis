@@ -8,6 +8,9 @@ final class ProxyCore {
 
     static let httpPort = 10809
     static let socksPort = 10808
+    /// LAN-facing HTTP inbound for the embedded Linux environment, whose
+    /// loopback is isolated from the host's. Password-protected.
+    static let lanHTTPPort = 10810
 
     private(set) var lastError: String = ""
 
@@ -34,6 +37,9 @@ final class ProxyCore {
             return String(cString: out)
         }
         lastError = result
+        if result.isEmpty {
+            ProxySupport.syncGuestProxyEnv()
+        }
         if result.isEmpty, settings.routingMode == "config", !Self.geoDataAvailable {
             lastError = "分流数据缺失，已按全局代理启动"
         }
@@ -42,6 +48,7 @@ final class ProxyCore {
     func stop() {
         MinisXrayStop()
         lastError = ""
+        ProxySupport.syncGuestProxyEnv()
     }
 
     func restart() {
@@ -126,6 +133,15 @@ final class ProxyCore {
                     "port": Self.socksPort,
                     "protocol": "socks",
                     "settings": ["auth": "noauth", "udp": true],
+                ],
+                [
+                    "tag": "http-lan",
+                    "listen": "0.0.0.0",
+                    "port": Self.lanHTTPPort,
+                    "protocol": "http",
+                    "settings": [
+                        "accounts": [["user": "minis", "pass": settings.lanSecret]],
+                    ],
                 ],
             ],
             "outbounds": [
