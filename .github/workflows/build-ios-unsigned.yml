@@ -72,7 +72,21 @@ jobs:
             -derivedDataPath build/DD \
             CODE_SIGNING_ALLOWED=NO build
 
+      - name: Upload raw app (pre-injection backup)
+        run: |
+          APP=$(find build/DD -name "*.app" -maxdepth 6 | head -1)
+          ditto -c -k --keepParent "$APP" Minis-raw-app.zip
+          ls -lh Minis-raw-app.zip
+
+      - name: Upload raw artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Minis-raw-app
+          path: Minis-raw-app.zip
+          retention-days: 7
+
       - name: Inject entitlements (self-signed, for re-sign preservation)
+        timeout-minutes: 10
         run: |
           set -euo pipefail
           APP=$(find build/DD -name "*.app" -maxdepth 6 | head -1)
@@ -80,19 +94,20 @@ jobs:
           openssl req -x509 -newkey rsa:2048 -keyout /tmp/k.pem -out /tmp/c.pem -days 365 -nodes -subj "/CN=MinisCI" 2>/dev/null
           openssl pkcs12 -export -legacy -out /tmp/id.p12 -inkey /tmp/k.pem -in /tmp/c.pem -passout pass:ci -name MinisCI
           security create-keychain -p ci /tmp/build.keychain
+          security default-keychain -s /tmp/build.keychain
           security unlock-keychain -p ci /tmp/build.keychain
+          security set-keychain-settings -lut 3600 /tmp/build.keychain
           security import /tmp/id.p12 -k /tmp/build.keychain -P ci -T /usr/bin/codesign
-          security add-trusted-cert -d -r trustRoot -p codeSign -k /tmp/build.keychain /tmp/c.pem
           security set-key-partition-list -S apple-tool:,apple: -s -k ci /tmp/build.keychain > /dev/null
-          ID=$(security find-identity -v /tmp/build.keychain | grep -oE "[0-9A-F]{40}" | head -1)
+          ID=$(security find-identity /tmp/build.keychain | grep -oE "[0-9A-F]{40}" | head -1)
           echo "Identity: $ID"
           find "$APP/Frameworks" -maxdepth 1 -name "*.framework" | while read -r fw; do
-            codesign --force --sign "$ID" --timestamp=none "$fw"
+            codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none "$fw"
           done
-          codesign --force --sign "$ID" --timestamp=none --entitlements src/ios/AgentWidget/AgentWidget.entitlements "$APP/PlugIns/AgentWidgetExtension.appex"
-          codesign --force --sign "$ID" --timestamp=none --entitlements src/ios/FileProvider/FileProvider.entitlements "$APP/PlugIns/MinisFileProvider.appex"
-          codesign --force --sign "$ID" --timestamp=none --entitlements src/ios/ShareExtension/ShareExtension.entitlements "$APP/PlugIns/MinisShare.appex"
-          codesign --force --sign "$ID" --timestamp=none --entitlements src/ios/Minis.entitlements "$APP"
+          codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none --entitlements src/ios/AgentWidget/AgentWidget.entitlements "$APP/PlugIns/AgentWidgetExtension.appex"
+          codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none --entitlements src/ios/FileProvider/FileProvider.entitlements "$APP/PlugIns/MinisFileProvider.appex"
+          codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none --entitlements src/ios/ShareExtension/ShareExtension.entitlements "$APP/PlugIns/MinisShare.appex"
+          codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none --entitlements src/ios/Minis.entitlements "$APP"
           echo "--- verify ---"
           codesign -d --entitlements - "$APP" 2>/dev/null | head -30 || true
 
