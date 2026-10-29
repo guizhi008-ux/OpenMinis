@@ -68,7 +68,7 @@ jobs:
       - name: Build app (unsigned)
         run: |
           xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis \
-            -configuration Debug -destination 'generic/platform=iOS' \
+            -configuration Release -destination 'generic/platform=iOS' \
             -derivedDataPath build/DD \
             CODE_SIGNING_ALLOWED=NO build
 
