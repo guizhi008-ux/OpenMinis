@@ -169,7 +169,8 @@ enum ProxySupport {
     private static var lastUse = Date.distantPast
     private static let useLock = NSLock()
     private static var watchdogStarted = false
-    private static var startInFlight = false
+    private static var startGroup: DispatchGroup?
+    private static var guestExecCount = 0
 
     static func noteUse() {
         useLock.lock()
@@ -196,23 +197,47 @@ enum ProxySupport {
     static func ensureCoreRunning() {
         let settings = ProxySettings.shared
         guard settings.enabled, settings.isConfigured else { return }
-        guard !ProxyCore.shared.isRunning else { return }
-        useLock.lock()
-        if startInFlight {
-            useLock.unlock()
+        if ProxyCore.shared.isRunning {
+            noteUse()
             return
         }
-        startInFlight = true
+        useLock.lock()
+        if let group = startGroup {
+            // A start is already in flight: wait for it rather than
+            // racing ahead and hitting a listener that is not up yet.
+            useLock.unlock()
+            _ = group.wait(timeout: .now() + 10)
+            noteUse()
+            return
+        }
+        let group = DispatchGroup()
+        group.enter()
+        startGroup = group
         useLock.unlock()
-        let sem = DispatchSemaphore(value: 0)
         DispatchQueue.global(qos: .userInitiated).async {
             ProxyCore.shared.start()
             useLock.lock()
-            startInFlight = false
+            startGroup = nil
             useLock.unlock()
-            sem.signal()
+            group.leave()
         }
-        _ = sem.wait(timeout: .now() + 3)
+        _ = group.wait(timeout: .now() + 10)
+        noteUse()
+    }
+
+    /// Marks a guest command as executing, so the idle watchdog never
+    /// stops the core mid-command. Call guestExecEnd when it finishes.
+    static func guestExecBegin() {
+        useLock.lock()
+        guestExecCount += 1
+        useLock.unlock()
+        noteUse()
+    }
+
+    static func guestExecEnd() {
+        useLock.lock()
+        guestExecCount = max(0, guestExecCount - 1)
+        useLock.unlock()
         noteUse()
     }
 
@@ -232,7 +257,9 @@ enum ProxySupport {
                 guard settings.autoMode, settings.enabled, ProxyCore.shared.isRunning else { continue }
                 useLock.lock()
                 let idle = Date().timeIntervalSince(lastUse)
+                let busy = guestExecCount > 0
                 useLock.unlock()
+                if busy { continue }
                 if idle > autoIdleSeconds {
                     ProxyCore.shared.stop()
                 }
