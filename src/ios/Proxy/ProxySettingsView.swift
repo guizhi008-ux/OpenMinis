@@ -20,6 +20,17 @@ struct ProxySettingsView: View {
         Form {
             Section {
                 Toggle("启用代理", isOn: $settings.enabled)
+                    .onChange(of: settings.enabled) { _, newValue in
+                        if newValue {
+                            DispatchQueue.global(qos: .userInitiated).async {
+                                ProxyCore.shared.start()
+                                DispatchQueue.main.async { statusTick += 1 }
+                            }
+                        } else {
+                            ProxyCore.shared.stop()
+                            statusTick += 1
+                        }
+                    }
                 Picker("协议", selection: $settings.protocolRaw) {
                     ForEach(MinisProxyProtocol.allCases) { proto in
                         Text(proto.label).tag(proto.rawValue)
@@ -72,6 +83,12 @@ struct ProxySettingsView: View {
                     } else {
                         importMessage = "导入成功"
                         linkText = ""
+                        if settings.enabled {
+                            DispatchQueue.global(qos: .userInitiated).async {
+                                ProxyCore.shared.start()
+                                DispatchQueue.main.async { statusTick += 1 }
+                            }
+                        }
                     }
                 }
                 if let importMessage {
@@ -181,12 +198,28 @@ struct ProxySettingsView: View {
     private func runTest() {
         testResult = "测试中…"
         Task {
-            var request = URLRequest(url: URL(string: "https://www.gstatic.com/generate_204")!)
-            request.timeoutInterval = 15
             do {
+                // The test target must be a host the routing rules send via
+                // the proxy: gstatic is classified CN/direct in config mode
+                // and produced false negatives. Cloudflare's generate_204
+                // is proxied under both routing modes.
+                var request = URLRequest(url: URL(string: "https://cp.cloudflare.com/generate_204")!)
+                request.timeoutInterval = 15
+                let started = Date()
                 let (_, response) = try await ProxySupport.testSession.data(for: request)
                 let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-                testResult = (code == 204 || code == 200) ? "连通（HTTP \(code)）" : "异常（HTTP \(code)）"
+                let ms = Int(Date().timeIntervalSince(started) * 1000)
+                guard code == 204 || code == 200 else {
+                    testResult = "异常（HTTP \(code)）"
+                    statusTick += 1
+                    return
+                }
+                var ipText = ""
+                if let (data, _) = try? await ProxySupport.testSession.data(for: URLRequest(url: URL(string: "https://api.ipify.org")!)),
+                   let ip = String(data: data, encoding: .utf8) {
+                    ipText = "，出口 IP \(ip.trimmingCharacters(in: .whitespacesAndNewlines))"
+                }
+                testResult = "连通（\(ms) ms）\(ipText)"
             } catch {
                 testResult = "失败：\(error.localizedDescription)"
             }
