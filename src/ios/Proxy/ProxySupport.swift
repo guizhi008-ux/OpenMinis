@@ -11,6 +11,10 @@ enum ProxySupport {
     static func apply(to config: URLSessionConfiguration, force: Bool = false) {
         let settings = ProxySettings.shared
         guard settings.isConfigured, force || settings.enabled else { return }
+        if settings.autoMode, !force {
+            ensureCoreRunning()
+        }
+        noteUse()
         // iOS has no HTTPS-specific proxy keys (they are macOS-only and
         // marked unavailable in iOS). The HTTP entry alone is enough:
         // URLSession sends HTTPS via HTTP CONNECT through the same proxy.
@@ -113,11 +117,92 @@ enum ProxySupport {
 
     /// Called from MinisApp.init: bring the core up early when enabled, so
     /// provider sessions created afterwards already find it listening.
+    /// In smart on-demand mode the core stays off until first use; only
+    /// the idle watchdog is armed here.
     static func startCoreIfEnabled() {
         let settings = ProxySettings.shared
         guard settings.enabled, settings.isConfigured else { return }
+        startIdleWatchdog()
+        guard !settings.autoMode else { return }
         DispatchQueue.global(qos: .utility).async {
             ProxyCore.shared.start()
+        }
+    }
+
+    // MARK: - Smart on-demand
+
+    /// Idle window after which an unused core is stopped in auto mode.
+    static let autoIdleSeconds: TimeInterval = 600
+    private static var lastUse = Date.distantPast
+    private static let useLock = NSLock()
+    private static var watchdogStarted = false
+    private static var startInFlight = false
+
+    static func noteUse() {
+        useLock.lock()
+        lastUse = Date()
+        useLock.unlock()
+    }
+
+    /// Guest shells count as use when their environment carries our
+    /// injected proxy variables.
+    static func noteGuestActivity(env: [String: String]) {
+        let marker = ":\(ProxyCore.lanHTTPPort)"
+        if let v = env["http_proxy"] ?? env["https_proxy"], v.contains(marker) {
+            noteUse()
+            if ProxySettings.shared.autoMode {
+                ensureCoreRunning()
+            }
+        }
+    }
+
+    /// Starts the core if it is not already running (auto mode's lazy
+    /// start). Waits briefly so the session being configured does not
+    /// race the listener coming up.
+    static func ensureCoreRunning() {
+        let settings = ProxySettings.shared
+        guard settings.enabled, settings.isConfigured else { return }
+        guard !ProxyCore.shared.isRunning else { return }
+        useLock.lock()
+        if startInFlight {
+            useLock.unlock()
+            return
+        }
+        startInFlight = true
+        useLock.unlock()
+        let sem = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .userInitiated).async {
+            ProxyCore.shared.start()
+            useLock.lock()
+            startInFlight = false
+            useLock.unlock()
+            sem.signal()
+        }
+        _ = sem.wait(timeout: .now() + 3)
+        noteUse()
+    }
+
+    /// Periodically stops an idle core in auto mode.
+    static func startIdleWatchdog() {
+        useLock.lock()
+        if watchdogStarted {
+            useLock.unlock()
+            return
+        }
+        watchdogStarted = true
+        useLock.unlock()
+        DispatchQueue.global(qos: .utility).async {
+            while true {
+                Thread.sleep(forTimeInterval: 60)
+                let settings = ProxySettings.shared
+                guard settings.autoMode, settings.enabled, ProxyCore.shared.isRunning else { continue }
+                useLock.lock()
+                let idle = Date().timeIntervalSince(lastUse)
+                useLock.unlock()
+                if idle > autoIdleSeconds {
+                    ProxyCore.shared.stop()
+                }
+            }
         }
     }
 }
