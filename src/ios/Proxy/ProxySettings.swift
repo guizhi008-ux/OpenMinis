@@ -21,6 +21,12 @@ final class ProxySettings: ObservableObject {
     @Published var enabled: Bool {
         didSet { defaults.set(enabled, forKey: "minis.proxy.enabled") }
     }
+    /// Smart on-demand mode: the core stays off until something actually
+    /// needs the proxy, and stops again after an idle period.
+    @Published var autoMode: Bool {
+        didSet { defaults.set(autoMode, forKey: "minis.proxy.autoMode") }
+    }
+
     /// Password for the LAN-facing inbound that lets the embedded Linux
     /// environment reach the proxy. Generated once, then stable, so the
     /// injected environment variables don't churn between restarts.
@@ -103,6 +109,7 @@ final class ProxySettings: ObservableObject {
     init() {
         let d = UserDefaults.standard
         enabled = d.bool(forKey: "minis.proxy.enabled")
+        autoMode = d.bool(forKey: "minis.proxy.autoMode")
         protocolRaw = d.string(forKey: "minis.proxy.protocol") ?? MinisProxyProtocol.ss.rawValue
         nodeName = d.string(forKey: "minis.proxy.name") ?? ""
         routingMode = d.string(forKey: "minis.proxy.routingMode") ?? "config"
