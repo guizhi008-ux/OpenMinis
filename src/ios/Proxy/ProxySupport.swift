@@ -74,11 +74,35 @@ enum ProxySupport {
         return wifi ?? cellular
     }
 
+    /// Wi-Fi (en0) address only. The guest container can reach the host's
+    /// proxy inbound over the LAN, but NOT via the cellular (pdp_ip)
+    /// address: carrier NAT does not hairpin back to the phone itself, so
+    /// injecting a cellular proxy URL would blackhole all guest traffic.
+    static func lanWiFiIPv4() -> String? {
+        var head: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&head) == 0, let first = head else { return nil }
+        defer { freeifaddrs(first) }
+        var cursor: UnsafeMutablePointer<ifaddrs>? = first
+        while let current = cursor {
+            defer { cursor = current.pointee.ifa_next }
+            let flags = Int32(current.pointee.ifa_flags)
+            guard let addr = current.pointee.ifa_addr,
+                  addr.pointee.sa_family == UInt8(AF_INET),
+                  flags & 0x1 != 0, flags & 0x40 != 0, flags & 0x8 == 0
+            else { continue }
+            guard String(cString: current.pointee.ifa_name) == "en0" else { continue }
+            var buf = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            getnameinfo(addr, socklen_t(addr.pointee.sa_len), &buf, socklen_t(buf.count), nil, 0, NI_NUMERICHOST)
+            return String(cString: buf)
+        }
+        return nil
+    }
+
     /// Proxy URL the guest environment should use right now, or nil when
     /// the core is not running or no LAN address is available.
     static func guestProxyURL() -> String? {
         let settings = ProxySettings.shared
-        guard settings.enabled, ProxyCore.shared.isRunning, let ip = lanIPv4() else { return nil }
+        guard settings.enabled, ProxyCore.shared.isRunning, let ip = lanWiFiIPv4() else { return nil }
         return "http://minis:\(settings.lanSecret)@\(ip):\(ProxyCore.lanHTTPPort)"
     }
 
