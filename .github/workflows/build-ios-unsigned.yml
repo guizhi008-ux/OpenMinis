@@ -78,7 +78,7 @@ jobs:
           APP=$(find build/DD -name "*.app" -maxdepth 6 | head -1)
           echo "App: $APP"
           openssl req -x509 -newkey rsa:2048 -keyout /tmp/k.pem -out /tmp/c.pem -days 365 -nodes -subj "/CN=MinisCI" 2>/dev/null
-          openssl pkcs12 -export -out /tmp/id.p12 -inkey /tmp/k.pem -in /tmp/c.pem -passout pass:ci -name MinisCI
+          openssl pkcs12 -export -legacy -out /tmp/id.p12 -inkey /tmp/k.pem -in /tmp/c.pem -passout pass:ci -name MinisCI
           security create-keychain -p ci /tmp/build.keychain
           security unlock-keychain -p ci /tmp/build.keychain
           security import /tmp/id.p12 -k /tmp/build.keychain -P ci -T /usr/bin/codesign
