@@ -232,6 +232,16 @@ final class PendingRecordChanges: @unchecked Sendable {
 final class CloudSyncEngine: ObservableObject {
     static let shared = CloudSyncEngine()
 
+    /// Whether this build can use the iCloud container at all. The
+    /// container belongs to the original developer team; builds signed
+    /// without the iCloud entitlement (sideloaded with a third-party
+    /// certificate) always get nil here, and starting the sync engine
+    /// against an unavailable container traps — which put the app into
+    /// a launch crash loop once sync had been switched on.
+    static var iCloudContainerAvailable: Bool {
+        FileManager.default.url(forUbiquityContainerIdentifier: "iCloud.com.openminis.app") != nil
+    }
+
     private lazy var container = CKContainer(identifier: "iCloud.com.openminis.app")
     private let devicesZoneName = "devices"
 
@@ -541,6 +551,11 @@ final class CloudSyncEngine: ObservableObject {
 
     func start() async {
         guard isEnabled else {
+            syncStatus = .disabled
+            return
+        }
+        guard Self.iCloudContainerAvailable else {
+            logger.warning("[CloudSync] iCloud container unavailable in this build; sync stays off")
             syncStatus = .disabled
             return
         }
