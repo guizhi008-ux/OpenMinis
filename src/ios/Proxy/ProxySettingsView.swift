@@ -188,16 +188,8 @@ struct ProxySettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-                if coreRunning, let ip = ProxySupport.lanWiFiIPv4() {
-                    Text("Linux 小系统代理：http://minis:••••@\(ip):\(ProxyCore.lanHTTPPort)（已自动写入环境变量，新开终端 / 对话生效）")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if coreRunning, ProxySupport.lanIPv4() != nil {
-                    Text("小系统代理需连接 Wi-Fi：当前是蜂窝网络，小系统无法回连本机代理，已保持直连")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if coreRunning {
-                    Text("Linux 小系统代理：未检测到局域网地址，暂未注入环境变量")
+                if coreRunning {
+                    Text("Linux 小系统代理：http://127.0.0.1:\(ProxyCore.httpPort)（已自动写入环境变量，新开终端 / 对话生效；Wi-Fi 与蜂窝均可）")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
