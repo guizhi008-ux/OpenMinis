@@ -151,14 +151,28 @@ check_prerequisites() {
 fetch_ffmpeg_source() {
     local version="6.1.2"
     local tarball="ffmpeg-${version}.tar.xz"
-    local url="https://ffmpeg.org/releases/${tarball}"
+    local urls=(
+        "https://ffmpeg.org/releases/${tarball}"
+        "https://fossies.org/linux/misc/${tarball}"
+        "https://github.com/FFmpeg/FFmpeg/releases/download/n${version}/${tarball}"
+    )
     local tmp
     tmp="$(mktemp -d)"
 
     log_info "FFmpeg source not present — downloading ${version}..."
-    if ! curl -fL# "$url" -o "$tmp/$tarball"; then
+    local ok=0
+    local url
+    for url in "${urls[@]}"; do
+        log_info "Trying ${url}"
+        if curl -fL --retry 3 --retry-delay 5 --connect-timeout 30 "$url" -o "$tmp/$tarball"; then
+            ok=1
+            break
+        fi
+        rm -f "$tmp/$tarball"
+    done
+    if [ "$ok" != "1" ]; then
         rm -rf "$tmp"
-        log_error "Failed to download $url — check your network, or place the source at $FFMPEG_DIR manually."
+        log_error "Failed to download ${tarball} from all mirrors — check your network, or place the source at $FFMPEG_DIR manually."
     fi
 
     log_info "Extracting..."
