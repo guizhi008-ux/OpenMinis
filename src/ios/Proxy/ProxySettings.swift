@@ -21,6 +21,16 @@ final class ProxySettings: ObservableObject {
     @Published var enabled: Bool {
         didSet { defaults.set(enabled, forKey: "minis.proxy.enabled") }
     }
+    /// Password for the LAN-facing inbound that lets the embedded Linux
+    /// environment reach the proxy. Generated once, then stable, so the
+    /// injected environment variables don't churn between restarts.
+    var lanSecret: String {
+        if let s = defaults.string(forKey: "minis.proxy.lanSecret"), !s.isEmpty { return s }
+        let s = (0..<16).map { _ in String(format: "%x", Int.random(in: 0...15)) }.joined()
+        defaults.set(s, forKey: "minis.proxy.lanSecret")
+        return s
+    }
+
     @Published var protocolRaw: String {
         didSet { defaults.set(protocolRaw, forKey: "minis.proxy.protocol") }
     }
