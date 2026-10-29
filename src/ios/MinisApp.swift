@@ -218,10 +218,10 @@ struct MinisApp: App {
     @available(iOS 17.0, *)
     @MainActor
     private static func startSyncEngines() async {
-        await SyncV2Bootstrap.startIfEnabled()
-        if !SyncV2Bootstrap.shouldPauseV1() {
-            await CloudSyncEngine.shared.start()
-        }
+        // iCloud sync removed in this build: the container belongs to the
+        // original developer team, and starting either sync engine under a
+        // third-party signing certificate traps at launch. Both engines
+        // stay dormant; nothing in this build starts them.
     }
 
     var body: some Scene {
