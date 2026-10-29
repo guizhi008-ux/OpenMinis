@@ -20,6 +20,7 @@ struct ProxySettingsView: View {
         Form {
             Section {
                 Toggle("启用代理", isOn: $settings.enabled)
+                    .disabled(settings.autoMode)
                     .onChange(of: settings.enabled) { newValue in
                         if newValue {
                             if settings.autoMode {
@@ -39,14 +40,15 @@ struct ProxySettingsView: View {
                     }
                 Toggle("智能按需（用时自动开、空闲自动关）", isOn: $settings.autoMode)
                     .onChange(of: settings.autoMode) { newValue in
+                        // Smart on-demand drives the master switch: turning
+                        // it on arms the proxy (master on, greyed out);
+                        // turning it off disarms it (master off, manual).
                         if newValue {
                             ProxySupport.startIdleWatchdog()
                             ProxySupport.noteUse()
-                        } else if settings.enabled {
-                            DispatchQueue.global(qos: .userInitiated).async {
-                                ProxyCore.shared.start()
-                                DispatchQueue.main.async { statusTick += 1 }
-                            }
+                            if !settings.enabled { settings.enabled = true }
+                        } else {
+                            if settings.enabled { settings.enabled = false }
                         }
                         statusTick += 1
                     }
