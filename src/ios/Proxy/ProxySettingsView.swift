@@ -167,6 +167,15 @@ struct ProxySettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
+                if coreRunning, let ip = ProxySupport.lanIPv4() {
+                    Text("Linux 小系统代理：http://minis:••••@\(ip):\(ProxyCore.lanHTTPPort)（已自动写入环境变量，新开终端 / 对话生效）")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if coreRunning {
+                    Text("Linux 小系统代理：未检测到局域网地址，暂未注入环境变量")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Button("启动 / 重启内核") {
                     DispatchQueue.global(qos: .userInitiated).async {
                         ProxyCore.shared.restart()
@@ -188,7 +197,7 @@ struct ProxySettingsView: View {
             } header: {
                 Text("内核")
             } footer: {
-                Text("改完节点信息后点一次「启动 / 重启内核」。已经打开的对话若不生效，重开一次应用。测试会通过节点访问一个谷歌的连通性地址。")
+                Text("开关与节点改动会自动重启内核。已经打开的对话若不生效，重开一次应用。测试通过节点访问 Cloudflare 并显示出口 IP。")
             }
         }
         .navigationTitle("代理")
