@@ -70,7 +70,7 @@ jobs:
           xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis \
             -configuration Release -destination 'generic/platform=iOS' \
             -derivedDataPath build/DD \
-            CODE_SIGNING_ALLOWED=NO build
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER="" build
 
       - name: Package .app artifact
         run: |
