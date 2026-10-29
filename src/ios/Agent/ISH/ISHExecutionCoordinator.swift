@@ -328,6 +328,7 @@ actor ISHExecutionCoordinator {
 
         // Load user-defined env vars (nonisolated, reads from disk + Keychain)
         let customEnv = EnvVarStore.shared.allAsDict()
+        ProxySupport.noteGuestActivity(env: customEnv)
 
         // Feed the command as a script via stdin pipe to /bin/sh.
         // This avoids shell quoting issues with multi-line or special-char commands.
