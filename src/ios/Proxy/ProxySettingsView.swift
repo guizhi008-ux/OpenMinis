@@ -22,14 +22,33 @@ struct ProxySettingsView: View {
                 Toggle("启用代理", isOn: $settings.enabled)
                     .onChange(of: settings.enabled) { newValue in
                         if newValue {
-                            DispatchQueue.global(qos: .userInitiated).async {
-                                ProxyCore.shared.start()
-                                DispatchQueue.main.async { statusTick += 1 }
+                            if settings.autoMode {
+                                // On-demand: stay off until first use.
+                                ProxySupport.startIdleWatchdog()
+                                statusTick += 1
+                            } else {
+                                DispatchQueue.global(qos: .userInitiated).async {
+                                    ProxyCore.shared.start()
+                                    DispatchQueue.main.async { statusTick += 1 }
+                                }
                             }
                         } else {
                             ProxyCore.shared.stop()
                             statusTick += 1
                         }
+                    }
+                Toggle("智能按需（用时自动开、空闲自动关）", isOn: $settings.autoMode)
+                    .onChange(of: settings.autoMode) { newValue in
+                        if newValue {
+                            ProxySupport.startIdleWatchdog()
+                            ProxySupport.noteUse()
+                        } else if settings.enabled {
+                            DispatchQueue.global(qos: .userInitiated).async {
+                                ProxyCore.shared.start()
+                                DispatchQueue.main.async { statusTick += 1 }
+                            }
+                        }
+                        statusTick += 1
                     }
                 Picker("协议", selection: $settings.protocolRaw) {
                     ForEach(MinisProxyProtocol.allCases) { proto in
