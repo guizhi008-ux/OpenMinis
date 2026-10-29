@@ -159,6 +159,20 @@ fetch_ffmpeg_source() {
     local tmp
     tmp="$(mktemp -d)"
 
+    if [ -f "$SCRIPT_DIR/$tarball" ]; then
+        log_info "Using vendored ${tarball} from repo"
+        cp "$SCRIPT_DIR/$tarball" "$tmp/$tarball"
+        log_info "Extracting..."
+        if ! tar -xf "$tmp/$tarball" -C "$tmp"; then
+            rm -rf "$tmp"
+            log_error "Failed to extract vendored $tarball"
+        fi
+        mv "$tmp/ffmpeg-${version}" "$PATCH_SOURCE_DIR"
+        rm -rf "$tmp"
+        log_success "FFmpeg ${version} source ready at $PATCH_SOURCE_DIR"
+        return
+    fi
+
     log_info "FFmpeg source not present — downloading ${version}..."
     local ok=0
     local url
