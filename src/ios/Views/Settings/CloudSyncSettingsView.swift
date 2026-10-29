@@ -70,6 +70,12 @@ struct CloudSyncSettingsView: View {
     private var syncToggleSection: some View {
         Section {
             Toggle("Enable iCloud Sync", isOn: $engine.isEnabled)
+                .disabled(!CloudSyncEngine.iCloudContainerAvailable)
+            if !CloudSyncEngine.iCloudContainerAvailable {
+                Text("此版本无 iCloud 容器权限（第三方证书签名），同步不可用")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
 
             HStack {
                 Text("Status")
