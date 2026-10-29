@@ -102,8 +102,8 @@ enum ProxySupport {
     /// the core is not running or no LAN address is available.
     static func guestProxyURL() -> String? {
         let settings = ProxySettings.shared
-        guard settings.enabled, ProxyCore.shared.isRunning, let ip = lanWiFiIPv4() else { return nil }
-        return "http://minis:\(settings.lanSecret)@\(ip):\(ProxyCore.lanHTTPPort)"
+        guard settings.enabled, ProxyCore.shared.isRunning else { return nil }
+        return "http://127.0.0.1:\(ProxyCore.httpPort)"
     }
 
     /// Keeps the guest environment's proxy variables in sync with the core:
@@ -115,11 +115,16 @@ enum ProxySupport {
             let store = EnvVarStore.shared
             let defaults = UserDefaults.standard
             let managed = defaults.bool(forKey: guestEnvFlag)
-            let marker = ":\(ProxyCore.lanHTTPPort)"
+            let marker = ":\(ProxyCore.httpPort)"
+            let legacyMarker = ":\(ProxyCore.lanHTTPPort)"
+            func isOurs(_ v: String?) -> Bool {
+                guard let v else { return false }
+                return v.contains(marker) || v.contains(legacyMarker)
+            }
             if let url = guestProxyURL() {
                 for key in guestEnvKeys {
                     if let entry = store.entries.first(where: { $0.key == key }) {
-                        if managed || (store.allAsDict()[key]?.contains(marker) ?? false) {
+                        if managed || isOurs(store.allAsDict()[key]) {
                             store.update(id: entry.id, key: key, value: url)
                         }
                     } else {
@@ -130,7 +135,7 @@ enum ProxySupport {
             } else if managed {
                 for key in guestEnvKeys {
                     if let entry = store.entries.first(where: { $0.key == key }),
-                       store.allAsDict()[key]?.contains(marker) ?? false {
+                       isOurs(store.allAsDict()[key]) {
                         store.delete(id: entry.id)
                     }
                 }
@@ -175,8 +180,9 @@ enum ProxySupport {
     /// Guest shells count as use when their environment carries our
     /// injected proxy variables.
     static func noteGuestActivity(env: [String: String]) {
-        let marker = ":\(ProxyCore.lanHTTPPort)"
-        if let v = env["http_proxy"] ?? env["https_proxy"], v.contains(marker) {
+        let marker = ":\(ProxyCore.httpPort)"
+        let legacyMarker = ":\(ProxyCore.lanHTTPPort)"
+        if let v = env["http_proxy"] ?? env["https_proxy"], v.contains(marker) || v.contains(legacyMarker) {
             noteUse()
             if ProxySettings.shared.autoMode {
                 ensureCoreRunning()
