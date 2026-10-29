@@ -20,7 +20,7 @@ struct ProxySettingsView: View {
         Form {
             Section {
                 Toggle("启用代理", isOn: $settings.enabled)
-                    .onChange(of: settings.enabled) { _, newValue in
+                    .onChange(of: settings.enabled) { newValue in
                         if newValue {
                             DispatchQueue.global(qos: .userInitiated).async {
                                 ProxyCore.shared.start()
