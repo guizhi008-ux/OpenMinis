@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		E5PT00001 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5PT00011 /* PacketTunnelProvider.swift */; };
 		E5PT00002 /* Rclone.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = RCL000020 /* Rclone.xcframework */; };
+		E5PT00003 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = AA26CCC42F31090100AECF2D /* libresolv.tbd */; };
 		E5PT00009 /* MinisPacketTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E5PT00010 /* MinisPacketTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		21FED4B7BB6F6D9476C9992E /* VoiceProvider+System.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88993FC8E3F0199C6638F664 /* VoiceProvider+System.swift */; };
 		241D530017827D7F0EB604DE /* VoiceProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2941B643B8A2F048A2B154E /* VoiceProviderFactory.swift */; };
@@ -1499,6 +1500,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E5PT00002 /* Rclone.xcframework in Frameworks */,
+				E5PT00003 /* libresolv.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
