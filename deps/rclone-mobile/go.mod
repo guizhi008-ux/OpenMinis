@@ -6,6 +6,7 @@ require (
 	github.com/rclone/rclone v1.75.0
 	golang.org/x/net v0.58.0
 	tailscale.com v1.94.2
+	gvisor.dev/gvisor v0.0.0-20250205023644-9414b50a5633
 )
 
 require (
@@ -155,7 +156,6 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gvisor.dev/gvisor v0.0.0-20250205023644-9414b50a5633 // indirect
 	moul.io/http2curl/v2 v2.3.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
