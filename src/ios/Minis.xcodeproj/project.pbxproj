@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E5PT00001 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5PT00011 /* PacketTunnelProvider.swift */; };
+		E5PT00002 /* Rclone.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = RCL000020 /* Rclone.xcframework */; };
+		E5PT00009 /* MinisPacketTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E5PT00010 /* MinisPacketTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		21FED4B7BB6F6D9476C9992E /* VoiceProvider+System.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88993FC8E3F0199C6638F664 /* VoiceProvider+System.swift */; };
 		241D530017827D7F0EB604DE /* VoiceProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2941B643B8A2F048A2B154E /* VoiceProviderFactory.swift */; };
 		2A4FD49F872431D703328384 /* VoiceOutputPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 424510790AF3FB2452D3CCE3 /* VoiceOutputPlayer.swift */; };
@@ -628,6 +631,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		E5PT00081 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E51000060 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E5PT00040;
+			remoteInfo = MinisPacketTunnel;
+		};
 		AA8A56912F6FBB7A00A3E54E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = E51000060 /* Project object */;
@@ -702,6 +712,7 @@
 				E5E000009 /* MinisShare.appex in Embed Foundation Extensions */,
 				E5H000009 /* AgentWidgetExtension.appex in Embed Foundation Extensions */,
 				E5FP00009 /* MinisFileProvider.appex in Embed Foundation Extensions */,
+				E5PT00009 /* MinisPacketTunnel.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -728,6 +739,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E5PT00010 /* MinisPacketTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MinisPacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E5PT00011 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
+		E5PT00012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E5PT00013 /* PacketTunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PacketTunnel.entitlements; sourceTree = "<group>"; };
+		E5PT00014 /* PacketTunnel-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PacketTunnel-Bridging-Header.h"; sourceTree = "<group>"; };
 		0ED149397BEA7E0408C92688 /* GroupVoiceModelsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupVoiceModelsView.swift; sourceTree = "<group>"; };
 		0F5379380323FA8C6477708C /* GroupSlotPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupSlotPicker.swift; sourceTree = "<group>"; };
 		16FF3462D09402F14B610CD6 /* VoiceWaveformView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceWaveformView.swift; sourceTree = "<group>"; };
@@ -1478,6 +1494,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		E5PT00043 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E5PT00002 /* Rclone.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AA8A56882F6FBB7A00A3E54E /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -1526,6 +1550,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		E5PT00030 /* PacketTunnel */ = {
+			isa = PBXGroup;
+			children = (
+				E5PT00011 /* PacketTunnelProvider.swift */,
+				E5PT00012 /* Info.plist */,
+				E5PT00013 /* PacketTunnel.entitlements */,
+				E5PT00014 /* PacketTunnel-Bridging-Header.h */,
+			);
+			path = PacketTunnel;
+			sourceTree = "<group>";
+		};
 		42A3821DABA8773E8A5BA57E /* Voice */ = {
 			isa = PBXGroup;
 			children = (
@@ -1691,6 +1726,7 @@
 				E51000031 /* Minis */,
 				E5E000031 /* Shared */,
 				E5E000030 /* ShareExtension */,
+				E5PT00030 /* PacketTunnel */,
 				E5H000030 /* AgentWidget */,
 				E5FP00030 /* FileProvider */,
 				AA8A568C2F6FBB7A00A3E54E /* MinisUITests */,
@@ -1744,6 +1780,7 @@
 				E5E000010 /* MinisShare.appex */,
 				E5H000010 /* AgentWidgetExtension.appex */,
 				E5FP00010 /* MinisFileProvider.appex */,
+				E5PT00010 /* MinisPacketTunnel.appex */,
 				AA8A568B2F6FBB7A00A3E54E /* MinisUITests.xctest */,
 				BB1000010F700000000000AA /* MinisTests.xctest */,
 				E5TH00010 /* MinisTestHost.app */,
@@ -2729,6 +2766,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		E5PT00040 /* MinisPacketTunnel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E5PT00050 /* Build configuration list for PBXNativeTarget "MinisPacketTunnel" */;
+			buildPhases = (
+				E5PT00041 /* Sources */,
+				E5PT00043 /* Frameworks */,
+				E5PT00042 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MinisPacketTunnel;
+			productName = MinisPacketTunnel;
+			productReference = E5PT00010 /* MinisPacketTunnel.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		AA8A568A2F6FBB7A00A3E54E /* MinisUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = AA8A56952F6FBB7A00A3E54E /* Build configuration list for PBXNativeTarget "MinisUITests" */;
@@ -2792,6 +2846,7 @@
 				E5E000080 /* PBXTargetDependency */,
 				E5H000080 /* PBXTargetDependency */,
 				E5FP00080 /* PBXTargetDependency */,
+				E5PT00080 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				AA0838CB2F3CA8A900049557 /* Terminal */,
@@ -2947,6 +3002,7 @@
 				E51000040 /* Minis */,
 				E5E000040 /* MinisShare */,
 				E5H000040 /* AgentWidgetExtension */,
+				E5PT00040 /* MinisPacketTunnel */,
 				E5FP00040 /* MinisFileProvider */,
 				AA8A568A2F6FBB7A00A3E54E /* MinisUITests */,
 				BB1000070F700000000000AA /* MinisTests */,
@@ -2956,6 +3012,13 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		E5PT00042 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AA8A56892F6FBB7A00A3E54E /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -3089,6 +3152,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		E5PT00041 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E5PT00001 /* PacketTunnelProvider.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AA8A56872F6FBB7A00A3E54E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -3692,6 +3763,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		E5PT00080 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E5PT00040 /* MinisPacketTunnel */;
+			targetProxy = E5PT00081 /* PBXContainerItemProxy */;
+		};
 		AA8A56922F6FBB7A00A3E54E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = E51000040 /* Minis */;
@@ -3758,6 +3834,70 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		E5PT00070 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PacketTunnel/PacketTunnel.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../deps/frameworks/Rclone.xcframework/ios-arm64/Headers",
+				);
+				INFOPLIST_FILE = PacketTunnel/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Minis VPN";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.15;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519.PacketTunnel;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "PacketTunnel/PacketTunnel-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E5PT00071 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PacketTunnel/PacketTunnel.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../deps/frameworks/Rclone.xcframework/ios-arm64/Headers",
+				);
+				INFOPLIST_FILE = PacketTunnel/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Minis VPN";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.15;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519.PacketTunnel;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "PacketTunnel/PacketTunnel-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		AA8A56932F6FBB7A00A3E54E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -4355,6 +4495,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		E5PT00050 /* Build configuration list for PBXNativeTarget "MinisPacketTunnel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E5PT00070 /* Debug */,
+				E5PT00071 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		AA8A56952F6FBB7A00A3E54E /* Build configuration list for PBXNativeTarget "MinisUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
