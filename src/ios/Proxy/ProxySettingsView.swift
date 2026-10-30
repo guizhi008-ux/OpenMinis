@@ -1,4 +1,5 @@
 import SwiftUI
+import NetworkExtension
 
 /// Settings › Proxy — configures the built-in Xray core so this app's own
 /// provider traffic can go through the user's SS / VLESS node, the way
@@ -10,6 +11,7 @@ struct ProxySettingsView: View {
     @State private var importMessage: String?
     @State private var statusTick: Int = 0
     @State private var testResult: String?
+    @State private var vpnStatus: String = "未启动"
 
     private var coreRunning: Bool {
         _ = statusTick
@@ -216,9 +218,123 @@ struct ProxySettingsView: View {
             } footer: {
                 Text("开关与节点改动会自动重启内核。已经打开的对话若不生效，重开一次应用。测试通过节点访问 Cloudflare 并显示出口 IP。")
             }
+
+            Section {
+                HStack {
+                    Text("VPN 状态")
+                    Spacer()
+                    Text(vpnStatus)
+                        .foregroundStyle(.secondary)
+                }
+                Button("启动全局 VPN") {
+                    startGlobalVPN()
+                }
+                Button("停止全局 VPN") {
+                    stopGlobalVPN()
+                }
+                Button("刷新状态") {
+                    refreshVPNStatus()
+                }
+            } header: {
+                Text("全局 VPN（验证版）")
+            } footer: {
+                Text("启动后全手机流量经内置内核按全局模式走当前节点（不分流）。启动前会先停掉 App 内核避免端口冲突；首次启动系统会弹窗要求确认添加 VPN 配置。")
+            }
         }
         .navigationTitle("代理")
-        .onAppear { statusTick += 1 }
+        .onAppear {
+            statusTick += 1
+            refreshVPNStatus()
+        }
+    }
+
+    // MARK: - Global VPN (verification build)
+
+    private static let vpnDescription = "Minis 全局 VPN（验证）"
+    private static let vpnBundleID = "app.maroon1835.nance8519.PacketTunnel"
+
+    private func refreshVPNStatus() {
+        NETunnelProviderManager.loadAllFromPreferences { managers, _ in
+            let manager = managers?.first { $0.localizedDescription == Self.vpnDescription }
+            DispatchQueue.main.async {
+                guard let manager else {
+                    vpnStatus = "未配置"
+                    return
+                }
+                switch manager.connection.status {
+                case .connected: vpnStatus = "已连接"
+                case .connecting: vpnStatus = "连接中…"
+                case .disconnecting: vpnStatus = "断开中…"
+                case .disconnected: vpnStatus = "未连接"
+                case .invalid: vpnStatus = "配置无效"
+                case .reasserting: vpnStatus = "重连中…"
+                @unknown default: vpnStatus = "未知"
+                }
+            }
+        }
+    }
+
+    private func startGlobalVPN() {
+        guard settings.isConfigured else {
+            vpnStatus = "请先导入或填写节点"
+            return
+        }
+        // Build the tunnel config with global routing, without disturbing
+        // the user's saved routing mode.
+        let savedMode = settings.routingMode
+        settings.routingMode = "global"
+        let json = ProxyCore.buildConfigJSON(settings: settings)
+        settings.routingMode = savedMode
+        guard let json else {
+            vpnStatus = "配置生成失败"
+            return
+        }
+        // The extension starts its own core on the same loopback ports.
+        ProxyCore.shared.stop()
+        statusTick += 1
+        vpnStatus = "正在保存配置…"
+        NETunnelProviderManager.loadAllFromPreferences { managers, _ in
+            let manager = managers?.first { $0.localizedDescription == Self.vpnDescription }
+                ?? NETunnelProviderManager()
+            let proto = NETunnelProviderProtocol()
+            proto.providerBundleIdentifier = Self.vpnBundleID
+            proto.serverAddress = "Minis"
+            proto.providerConfiguration = ["xrayConfig": json]
+            manager.protocolConfiguration = proto
+            manager.localizedDescription = Self.vpnDescription
+            manager.isEnabled = true
+            manager.saveToPreferences { saveError in
+                if let saveError {
+                    DispatchQueue.main.async {
+                        vpnStatus = "保存失败：\(saveError.localizedDescription)"
+                    }
+                    return
+                }
+                manager.loadFromPreferences { _ in
+                    do {
+                        try manager.connection.startVPNTunnel(options: nil)
+                        DispatchQueue.main.async {
+                            vpnStatus = "连接中…"
+                        }
+                    } catch {
+                        DispatchQueue.main.async {
+                            vpnStatus = "启动失败：\(error.localizedDescription)"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func stopGlobalVPN() {
+        NETunnelProviderManager.loadAllFromPreferences { managers, _ in
+            guard let manager = managers?.first(where: { $0.localizedDescription == Self.vpnDescription }) else {
+                DispatchQueue.main.async { vpnStatus = "未配置" }
+                return
+            }
+            manager.connection.stopVPNTunnel()
+            DispatchQueue.main.async { vpnStatus = "未连接" }
+        }
     }
 
     private func runTest() {
