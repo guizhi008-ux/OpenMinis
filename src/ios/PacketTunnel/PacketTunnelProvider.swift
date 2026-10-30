@@ -102,14 +102,14 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                     let family = buffer[0]
                     let payload = Data(buffer[1..<n])
                     self.packetFlow.writePackets([payload],
-                                                 protocols: [NSNumber(value: Int32(family))])
+                                                 withProtocols: [NSNumber(value: Int32(family))])
                 } else {
                     Thread.sleep(forTimeInterval: 0.003)
                 }
             }
         }
         thread.name = "MinisTunDrain"
-        thread.qualityOfService = .userInitiated
+        thread.qualityOfService = QualityOfService.userInitiated
         thread.start()
         drainThread = thread
     }
