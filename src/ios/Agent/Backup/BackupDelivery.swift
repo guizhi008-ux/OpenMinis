@@ -141,6 +141,7 @@ enum BackupDelivery {
     /// after wiping the old one. A rename within one volume is atomic and cheap,
     /// so the final name now appears only once the bytes are all there.
     nonisolated static func copyToMountedFolder(_ packageURL: URL, into root: URL) throws -> URL {
+        try SystemProxyBoundary.requireAllowed("External backup folders")
         try MountedFolderCoordinator.requireWritable(root)
         let dest = root.appendingPathComponent(packageURL.lastPathComponent)
         let partial = root.appendingPathComponent(".\(packageURL.lastPathComponent).partial")
