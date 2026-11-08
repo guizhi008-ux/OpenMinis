@@ -491,6 +491,8 @@ main() {
 
     check_prerequisites
     init_submodules
+    # Guest transport applies only to this pinned iSH library, never to app host sockets.
+    python3 "$SCRIPT_DIR/patches/ish-proxy/apply.py" "$ISH_DIR"
     for platform in $PLATFORMS; do
         select_platform "$platform"
         setup_cross_compile
