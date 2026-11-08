@@ -571,7 +571,7 @@ struct AsyncImagePreviewView: View {
                 .padding(.top, 2)
             }
             .task {
-                if let (data, _) = try? await URLSession.shared.data(from: url),
+                if let (data, _) = try? await AppProxyNetwork.shared.data(from: url),
                    let img = UIImage(data: data) {
                     loadedImage = img
                 }
