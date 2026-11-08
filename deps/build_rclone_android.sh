@@ -21,10 +21,12 @@
 #   ts_omit_portmapper no UPnP / NAT-PMP / PCP to the LAN gateway (NAT
 #                      traversal then relies on STUN + DERP)
 # Do NOT add ts_omit_acme: tsnet does not compile without it.
+# with_utls is required: sing-box refuses to start Reality outbounds in a
+# build without uTLS. Do not remove it.
 # Override with GO_TAGS="" (nothing omitted) or your own comma-separated list.
 set -euo pipefail
 
-GO_TAGS="${GO_TAGS-ts_omit_logtail,ts_omit_portmapper}"
+GO_TAGS="${GO_TAGS-ts_omit_logtail,ts_omit_portmapper,with_utls}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/deps/rclone-mobile"
@@ -42,6 +44,10 @@ command -v gomobile >/dev/null || {
 
 mkdir -p "$BUILD"
 cd "$SRC"
+
+# A hash-locked overlay intercepts every rclone fshttp dial, including SMB.
+OVERLAY="$(python3 "$ROOT/scripts/rclone_proxy_overlay.py" --output "$BUILD/proxy-overlay")"
+export GOFLAGS="${GOFLAGS:-} \"-modfile=$BUILD/proxy-overlay/go.mod\" \"-overlay=$OVERLAY\""
 
 echo "==> $(go version) tags='${GO_TAGS}'"
 
