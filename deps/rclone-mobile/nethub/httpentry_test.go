@@ -87,7 +87,8 @@ func TestHTTPFront(t *testing.T) {
 	if code, got := connectVia(t, front, basic("prov:abc", pass), "nas.tail1234.ts.net:22", "hi"); code != 200 || got != "tailnet:hi" {
 		t.Fatalf("tailnet: %d %q", code, got)
 	}
-	if last := ts.dials[len(ts.dials)-1]; last != "nas.tail1234.ts.net:22" {
+	dials := ts.dialed()
+	if last := dials[len(dials)-1]; last != "nas.tail1234.ts.net:22" {
 		t.Fatalf("tailnet dial lost the host name: %s", last)
 	}
 
@@ -155,4 +156,3 @@ func TestHTTPFrontSlowDialAnswers502(t *testing.T) {
 		t.Fatalf("slow dial: %d", code)
 	}
 }
-
