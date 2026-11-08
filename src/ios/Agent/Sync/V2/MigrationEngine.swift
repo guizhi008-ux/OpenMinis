@@ -431,6 +431,7 @@ final class MigrationEngine {
     /// No-op once migration is fully complete (v1 zone is gone) or
     /// failed (zone state is unknown / unsafe to query).
     func refreshV1ZoneCount() async {
+        guard !AppProxyNetwork.strictEnabled else { return }
         let status = currentStatus()
         if status == .completed || status == .failed { return }
         if #available(iOS 17.0, *) {
@@ -452,6 +453,7 @@ final class MigrationEngine {
     /// completed or failed, returns immediately. Caller is expected to
     /// ensure v1 sync is paused before calling.
     func runIfNeeded() async {
+        guard !AppProxyNetwork.strictEnabled else { return }
         // Re-entrancy guard. Launch (startIfEnabled) and the Sync-sheet
         // "Start / Retry Migration" button can both call this; overlapping
         // runs corrupt migration-state.json. If one is already driving the
@@ -631,6 +633,7 @@ final class MigrationEngine {
     /// no time and resumes at once. No-op unless the migration was requested,
     /// is still pending / in progress, is suspended, and nothing is driving it.
     func resumeIfSuspended(trigger: String, force: Bool = false) async {
+        guard !AppProxyNetwork.strictEnabled else { return }
         guard SyncV2Bootstrap.isMigrationRequested, !isRunning else { return }
         let status = currentStatus()
         guard status == .inProgress || status == .pending else { return }
@@ -899,10 +902,12 @@ final class MigrationEngine {
     /// permanent failure. [T-ios-icloud-v1v2-migration-fails]
     @available(iOS 17.0, *)
     private static func countCloudSessionsV2() async -> Int? {
+        guard !AppProxyNetwork.strictEnabled else { return nil }
         let container = CKContainer(identifier: ICloudSharedZoneTransport.containerIdentifier)
         let zoneID = CKRecordZone.ID(zoneName: ICloudSharedZoneTransport.sharedZoneName)
         let query = CKQuery(recordType: "SessionV2", predicate: NSPredicate(value: true))
         do {
+            try SystemProxyBoundary.requireAllowed("iCloud")
             let (matches, _) = try await container.privateCloudDatabase.records(
                 matching: query, inZoneWith: zoneID, desiredKeys: ["sessionId"], resultsLimit: 10_000
             )
@@ -1144,6 +1149,7 @@ enum V1FetcherShim {
     /// accept that the v2 push from local SQLite is the authoritative
     /// source and treat phase 1 as a no-op.
     static func fetchAll() async throws -> Result {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         if #available(iOS 17.0, *) {
             // If v2 is enabled, shouldPauseV1 == true and v1 was never
             // started this launch — there's no v1 engine instance to
@@ -1168,6 +1174,7 @@ enum V1FetcherShim {
     /// stay on the server. Returns 0 if the zone is gone.
     @available(iOS 17.0, *)
     static func countOwnZone() async throws -> Int {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         let myDeviceId = DeviceIdentity.deviceId
         let zoneID = CKRecordZone.ID(zoneName: "device-\(myDeviceId)")
         let container = CKContainer(identifier: ICloudSharedZoneTransport.containerIdentifier)
@@ -1220,10 +1227,12 @@ enum V1FetcherShim {
             let resp: (matchResults: [(CKRecord.ID, Swift.Result<CKRecord, Error>)],
                        queryCursor: CKQueryOperation.Cursor?)
             if let cur = cursor {
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 resp = try await db.records(continuingMatchFrom: cur,
                                             desiredKeys: [],
                                             resultsLimit: CKQueryOperation.maximumResults)
             } else {
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 resp = try await db.records(matching: query,
                                             inZoneWith: zoneID,
                                             desiredKeys: [],
@@ -1272,6 +1281,7 @@ enum V1FetcherShim {
     ///
     /// Returns normally only when the zone is verified absent.
     static func purgeZone(zoneName: String) async throws {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         guard #available(iOS 17.0, *) else { return }
         // Quiesce the owner BEFORE deleting, so no pending `saveZone` is
         // sitting in an engine's queue waiting to land after our delete.
@@ -1287,6 +1297,7 @@ enum V1FetcherShim {
             // Read back. `allRecordZones` is the same call the inventory uses,
             // so "gone here" means "gone in the list the user is looking at".
             let container = CKContainer(identifier: ICloudSharedZoneTransport.containerIdentifier)
+            try SystemProxyBoundary.requireAllowed("iCloud")
             let remaining = try await container.privateCloudDatabase.allRecordZones()
             if remaining.contains(where: { $0.zoneID.zoneName == zoneName }) {
                 logger.error("[SyncMigration] zone \(zoneName) reappeared after delete — engine re-created it")
@@ -1368,10 +1379,12 @@ enum V1FetcherShim {
     }
 
     static func deleteOwnZone(zoneName: String) async throws {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         if #available(iOS 17.0, *) {
             let container = CKContainer(identifier: ICloudSharedZoneTransport.containerIdentifier)
             let zoneID = CKRecordZone.ID(zoneName: zoneName)
             do {
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 _ = try await container.privateCloudDatabase.deleteRecordZone(withID: zoneID)
                 logger.info("[SyncMigration] deleted v1 zone: \(zoneName)")
             } catch let error as CKError where error.code == .zoneNotFound {
@@ -1396,7 +1409,9 @@ enum V1FetcherShim {
     /// the "iCloud Zones" inventory + per-zone delete control.
     @available(iOS 17.0, *)
     static func listAllZones() async throws -> [ZoneInfo] {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         let container = CKContainer(identifier: ICloudSharedZoneTransport.containerIdentifier)
+        try SystemProxyBoundary.requireAllowed("iCloud")
         let zones = try await container.privateCloudDatabase.allRecordZones()
         let myDeviceId = DeviceIdentity.deviceId
         let myZoneName = "device-\(myDeviceId)"
