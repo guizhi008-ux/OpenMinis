@@ -42,18 +42,22 @@ import (
 
 // Upstream is a user-configured proxy.
 type Upstream struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name,omitempty"` // display name, for logs
-	Type     string   `json:"type"`           // socks5 | http | https
-	Host     string   `json:"host"`
-	Port     int      `json:"port"`
-	Username string   `json:"username,omitempty"`
-	Password string   `json:"password,omitempty"`
-	Bypass   []string `json:"bypass,omitempty"` // host, *.suffix / .suffix, CIDR, IP
+	ID            string   `json:"id"`
+	Name          string   `json:"name,omitempty"` // display name, for logs
+	Type          string   `json:"type"`           // socks5 | http | https
+	Host          string   `json:"host"`
+	Port          int      `json:"port"`
+	Username      string   `json:"username,omitempty"`
+	Password      string   `json:"password,omitempty"`
+	TLSServerName string   `json:"tlsServerName,omitempty"` // original hostname when bootstrap pins Host to an IP
+	Bypass        []string `json:"bypass,omitempty"`        // host, *.suffix / .suffix, CIDR, IP
 }
 
 // Config is pushed from the app whenever a setting changes.
 type Config struct {
+	// Strict forbids direct fallback and bypasses for non-loopback traffic.
+	// Opt-in so existing Android routing keeps its configured behavior.
+	Strict       bool              `json:"strict,omitempty"`
 	DefaultRoute string            `json:"defaultRoute"` // direct | tailscale | proxy:<id>
 	Tags         map[string]string `json:"tags"`         // tag -> route ("default" = DefaultRoute)
 	Upstreams    []Upstream        `json:"upstreams"`
@@ -133,6 +137,9 @@ func (d Decision) Exit() string {
 }
 
 type Hub struct {
+	clientMu sync.Mutex
+	clients  map[net.Conn]struct{}
+	stopping bool
 	mu       sync.RWMutex
 	cfg      Config
 	ts       Tailnet
@@ -217,6 +224,9 @@ func (h *Hub) Start(port int) (addr string, password string, err error) {
 		return "", "", err
 	}
 	h.ln, h.password = ln, hex.EncodeToString(b)
+	h.clientMu.Lock()
+	h.stopping = false
+	h.clientMu.Unlock()
 	h.dead.Store(false)
 	go h.serve(ln)
 	h.logf("[Net][Entry] listening on %s", ln.Addr())
@@ -253,6 +263,55 @@ func (h *Hub) Stop() {
 		ln.Close()
 		h.logf("[Net][Entry] stopped (was %s)", ln.Addr())
 	}
+	if h.strict() {
+		h.clientMu.Lock()
+		h.stopping = true
+		h.clientMu.Unlock()
+		h.CloseConnections()
+	}
+}
+
+func (h *Hub) trackClient(c net.Conn) bool {
+	h.clientMu.Lock()
+	defer h.clientMu.Unlock()
+	if h.stopping {
+		c.Close()
+		return false
+	}
+	if h.clients == nil {
+		h.clients = make(map[net.Conn]struct{})
+	}
+	h.clients[c] = struct{}{}
+	return true
+}
+
+func (h *Hub) untrackClient(c net.Conn) {
+	h.clientMu.Lock()
+	delete(h.clients, c)
+	h.clientMu.Unlock()
+}
+
+// CloseConnections cancels active tunnels and datagrams when a strict route
+// changes. Listeners stay open; subsequent clients use the new policy.
+func (h *Hub) CloseConnections() {
+	h.clientMu.Lock()
+	clients := make([]net.Conn, 0, len(h.clients))
+	for c := range h.clients {
+		clients = append(clients, c)
+	}
+	h.clientMu.Unlock()
+	for _, c := range clients {
+		c.Close()
+	}
+	h.assocMu.Lock()
+	assocs := make([]*udpAssoc, 0, len(h.assocs))
+	for a := range h.assocs {
+		assocs = append(assocs, a)
+	}
+	h.assocMu.Unlock()
+	for _, a := range assocs {
+		a.close("route stopped")
+	}
 }
 
 func (h *Hub) Addr() string {
@@ -283,6 +342,12 @@ func (h *Hub) routeFor(tag string) string {
 		r = "direct"
 	}
 	return r
+}
+
+func (h *Hub) strict() bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.cfg.Strict
 }
 
 // Upstreams returns a copy of the configured upstream proxies.
@@ -328,6 +393,17 @@ func (h *Hub) isTailnetDest(host string) bool {
 // Decide picks where a connection from `tag` to `host` goes.
 func (h *Hub) Decide(tag, host string) Decision {
 	route := h.routeFor(tag)
+	if h.strict() {
+		if isLoopbackHost(host) {
+			return Decision{Kind: "direct", Route: route, Rule: "loopback"}
+		}
+		if strings.HasPrefix(route, "proxy:") {
+			if u := h.upstream(strings.TrimPrefix(route, "proxy:")); u != nil {
+				return Decision{Kind: "proxy", Upstream: u, Route: route, Rule: "strict"}
+			}
+		}
+		return Decision{Kind: "reject", Route: route, Rule: "strict-no-upstream"}
+	}
 	// Tailnet destinations always go through the tailnet while it is on,
 	// whatever the route: a route chooses how the REST of the traffic leaves.
 	tsUp := h.tailscaleUp()
@@ -408,6 +484,8 @@ func MatchBypass(list []string, host string) bool {
 
 func (h *Hub) dial(ctx context.Context, d Decision, addr string) (net.Conn, error) {
 	switch d.Kind {
+	case "reject":
+		return nil, stageErr("policy", errors.New("strict proxy route unavailable"))
 	case "tailscale":
 		if h.exitOffline(d) {
 			return nil, stageErr("tailnet", errExitOffline)
