@@ -77,6 +77,14 @@ struct SettingsSheet: View {
                     Text("Configure which models the agent uses, manage API keys & OAuth for each provider, and create model groups for fallback or load balancing.")
                 }
 
+                Section("Network") {
+                    NavigationLink {
+                        NetworkProxySettingsView()
+                    } label: {
+                        Label("Network Proxy", systemImage: "network")
+                    }
+                }
+
                 Section("Appearance") {
                     NavigationLink {
                         AppearanceSettingsView()
