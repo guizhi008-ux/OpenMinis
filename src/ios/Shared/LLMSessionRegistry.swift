@@ -24,7 +24,11 @@ final class LLMSessionRegistry: @unchecked Sendable {
     static let shared = LLMSessionRegistry()
 
     private let lock = NSLock()
-    private var sessions: [URLSession] = []
+    private final class Entry {
+        weak var session: URLSession?
+        init(_ session: URLSession) { self.session = session }
+    }
+    private var sessions: [Entry] = []
     private let logger = AppLogger(category: "Network")
 
     private init() {}
@@ -36,8 +40,9 @@ final class LLMSessionRegistry: @unchecked Sendable {
         defer { lock.unlock() }
         // Identity de-dup so a re-registration (shouldn't happen for file-level
         // singletons, but cheap insurance) never double-resets.
-        if !sessions.contains(where: { $0 === session }) {
-            sessions.append(session)
+        sessions.removeAll { $0.session == nil }
+        if !sessions.contains(where: { $0.session === session }) {
+            sessions.append(Entry(session))
         }
     }
 
@@ -45,7 +50,7 @@ final class LLMSessionRegistry: @unchecked Sendable {
     /// Each session remains usable; the next request opens a fresh connection.
     func evictAllConnections(reason: String) {
         lock.lock()
-        let snapshot = sessions
+        let snapshot = sessions.compactMap(\.session)
         lock.unlock()
         guard !snapshot.isEmpty else { return }
         logger.info("[Network] Evicting LLM connection pools (\(snapshot.count) session(s)) — reason: \(reason)")
