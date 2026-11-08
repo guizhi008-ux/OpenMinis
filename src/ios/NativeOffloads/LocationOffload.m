@@ -86,6 +86,7 @@ static NSDictionary *placemark_to_dict(CLPlacemark *pm) {
 }
 
 static int cmd_current(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
+    if (noff_reject_strict_proxy(TOOL_NAME, @"current", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
     __block CLLocationManager *manager;
     __block NoffLocationDelegate *delegate;
 
@@ -94,6 +95,11 @@ static int cmd_current(int argc, char **argv, int stdout_fd, BOOL compact, BOOL 
     delegate = [[NoffLocationDelegate alloc] init];
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (noff_strict_proxy_enabled()) {
+            delegate.error = noff_strict_proxy_error();
+            dispatch_semaphore_signal(delegate.semaphore);
+            return;
+        }
         manager = [[CLLocationManager alloc] init];
         manager.delegate = delegate;
 
@@ -112,6 +118,11 @@ static int cmd_current(int argc, char **argv, int stdout_fd, BOOL compact, BOOL 
             // Give the auth dialog a moment, then request location
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC),
                            dispatch_get_main_queue(), ^{
+                if (noff_strict_proxy_enabled()) {
+                    delegate.error = noff_strict_proxy_error();
+                    dispatch_semaphore_signal(delegate.semaphore);
+                    return;
+                }
                 [manager requestLocation];
             });
         } else if (status == kCLAuthorizationStatusAuthorizedWhenInUse ||
@@ -159,6 +170,8 @@ static int cmd_current(int argc, char **argv, int stdout_fd, BOOL compact, BOOL 
         data[@"gcj02_note"] = @"Use gcj02_* coordinates with Chinese map services (Amap, Baidu, Apple Maps China)";
     }
 
+    if (noff_reject_strict_proxy(TOOL_NAME, @"current", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
+
     // Auto reverse-geocode
     dispatch_semaphore_t geoSem = dispatch_semaphore_create(0);
     CLGeocoder *geocoder = [[CLGeocoder alloc] init];
@@ -178,6 +191,7 @@ static int cmd_current(int argc, char **argv, int stdout_fd, BOOL compact, BOOL 
 }
 
 static int cmd_geocode(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL compact, BOOL quiet) {
+    if (noff_reject_strict_proxy(TOOL_NAME, @"geocode", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
     NSString *latStr = noff_find_arg(argc, argv, "--lat");
     NSString *lngStr = noff_find_arg(argc, argv, "--lng");
 
@@ -229,6 +243,7 @@ static int cmd_geocode(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL
 }
 
 static int cmd_forward(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL compact, BOOL quiet) {
+    if (noff_reject_strict_proxy(TOOL_NAME, @"forward", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
     NSString *address = noff_find_arg(argc, argv, "--address");
     if (!address) {
         noff_emit_help(stderr_fd, HELP_TEXT);
