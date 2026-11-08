@@ -23,15 +23,19 @@ enum AppProxyWebKit {
     }
 
     private static func configure(_ store: WKWebsiteDataStore, snapshot: AppProxySnapshot) {
-        guard snapshot.enabled else { store.proxyConfigurations = []; return }
-        let port = snapshot.ready ? snapshot.httpPort : 1
-        let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: UInt16(clamping: port))!)
-        var proxy = ProxyConfiguration(httpCONNECTProxy: endpoint, tlsOptions: nil)
-        proxy.applyCredential(username: snapshot.username, password: snapshot.password)
-        proxy.allowFailover = false
-        proxy.matchDomains = [""]
-        proxy.excludedDomains = ["localhost", "127.0.0.1", "::1"]
-        store.proxyConfigurations = [proxy]
+        // WKWebsiteDataStore proxy configurations require iOS 17; older
+        // systems expose no per-store proxy API, so there is nothing to set.
+        if #available(iOS 17.0, *) {
+            guard snapshot.enabled else { store.proxyConfigurations = []; return }
+            let port = snapshot.ready ? snapshot.httpPort : 1
+            let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: UInt16(clamping: port))!)
+            var proxy = ProxyConfiguration(httpCONNECTProxy: endpoint, tlsOptions: nil)
+            proxy.applyCredential(username: snapshot.username, password: snapshot.password)
+            proxy.allowFailover = false
+            proxy.matchDomains = [""]
+            proxy.excludedDomains = ["localhost", "127.0.0.1", "::1"]
+            store.proxyConfigurations = [proxy]
+        }
     }
 
     private static func observeChanges() {
