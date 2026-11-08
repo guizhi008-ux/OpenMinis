@@ -145,9 +145,10 @@ func TestEntryLogsStageOnFailure(t *testing.T) {
 	if _, err := roundTrip(t, addr, "shell", "bad-password", "example.com:443"); err == nil {
 		t.Fatal("wrong entry password must be refused")
 	}
-	if logs.find("rejected: wrong entry password") == "" {
-		t.Fatal("entry auth failure must be logged")
-	}
+	// The auth reply reaches the client before handle() emits its log.
+	waitFor(t, "the entry auth failure log", func() bool {
+		return logs.find("rejected: wrong entry password") != ""
+	})
 }
 
 // slowTailnet blocks in Running(); the hub must still serve non-tailnet
