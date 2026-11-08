@@ -65,6 +65,7 @@ final class XAIOAuthManager: NSObject, ObservableObject {
     }
 
     func login(instanceId: String) async throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         // Re-entrancy guard. SwiftUI button taps + sheet onAppear / onChange
         // hooks can fire the same Task twice in rapid succession; without
         // this guard each concurrent call generates its own PKCE+state,
@@ -125,7 +126,7 @@ final class XAIOAuthManager: NSObject, ObservableObject {
         logger.info("Authorization URL: \(authorizationURL.absoluteString)")
 
         // 3. Open in-app Safari.
-        presentSafariViewController(url: authorizationURL)
+        try presentSafariViewController(url: authorizationURL)
 
         // 4. Wait for callback (5 min).
         logger.info("Waiting for callback...")
@@ -228,7 +229,7 @@ final class XAIOAuthManager: NSObject, ObservableObject {
 
     private func fetchDiscovery() async throws -> Discovery {
         let url = URL(string: discoveryURL)!
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await AppProxyNetwork.shared.data(from: url)
         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
         guard (200..<300).contains(status) else {
             throw LLMError.providerError(message: "xAI discovery failed: HTTP \(status)")
@@ -332,7 +333,7 @@ final class XAIOAuthManager: NSObject, ObservableObject {
 
         logger.info("\(context) POST \(endpoint)")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await AppProxyNetwork.shared.data(for: request)
         let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
         let responseBody = String(data: data, encoding: .utf8) ?? "<binary>"
         logger.info("\(context) Response status: \(statusCode)")
@@ -416,7 +417,8 @@ final class XAIOAuthManager: NSObject, ObservableObject {
 
     // MARK: - In-App Safari
 
-    private func presentSafariViewController(url: URL) {
+    private func presentSafariViewController(url: URL) throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first,
               let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
