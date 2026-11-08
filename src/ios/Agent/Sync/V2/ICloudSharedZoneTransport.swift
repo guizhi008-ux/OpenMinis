@@ -355,6 +355,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
 
     /// IDs the server has rejected with .unknownItem (already deleted) so
     /// we don't re-queue them indefinitely.
+    private var v1DeleteOperation: CKModifyRecordsOperation?
     private var v1DeleteDropped: Set<String> = []
 
     /// Most recent CloudKit-issued throttle deadline. Read by SyncCore
@@ -517,6 +518,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     }
 
     func start() async throws {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         guard syncEngine == nil else { return }
         logger.info("[SyncTransport] start STEP=enter")
         // Restore etag cache before any send; without this, the first
@@ -539,6 +541,10 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
         let engine = CKSyncEngine(config)
         self.syncEngine = engine
         logger.info("[SyncTransport] start STEP=engineCreated")
+        guard !AppProxyNetwork.strictEnabled else {
+            await stop()
+            return
+        }
         // Ensure the three zones exist. Idempotent on the engine side.
         engine.state.add(pendingDatabaseChanges: [
             .saveZone(CKRecordZone(zoneID: CKRecordZone.ID(zoneName: Self.sharedZoneName))),
@@ -560,6 +566,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
         // this so engine.state knows the saves are done.
         logger.info("[SyncTransport] start STEP=initialSendChanges begin")
         do {
+            try SystemProxyBoundary.requireAllowed("iCloud")
             try await engine.sendChanges()
             logger.info("[SyncTransport] start STEP=initialSendChanges done")
         } catch {
@@ -600,6 +607,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     /// CloudKit dashboard which we can't do programmatically.
     @MainActor
     private func fetchRecentV2() async {
+        guard !AppProxyNetwork.strictEnabled else { return }
         logger.info("[iCloudTrace] fetchRecentV2 entering")
         guard !recentFetchInFlight else {
             logger.info("[iCloudTrace] fetchRecentV2 skip — already in flight")
@@ -797,6 +805,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
             outcome = await Task.detached(priority: .utility) { [self] () -> Result<(rows: [(CKRecord, PortableRecord?)], truncated: Bool), Error> in
                 do {
                     var rows: [(CKRecord, PortableRecord?)] = []
+                    try SystemProxyBoundary.requireAllowed("iCloud")
                     var result = try await db.records(
                         matching: query,
                         inZoneWith: zoneID,
@@ -815,6 +824,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
                         }
                         guard let cursor = result.queryCursor else { break }
                         guard pages < pageCap else { return .success((rows: rows, truncated: true)) }
+                        try SystemProxyBoundary.requireAllowed("iCloud")
                         result = try await db.records(continuingMatchFrom: cursor, desiredKeys: nil, resultsLimit: 200)
                         pages += 1
                     }
@@ -998,6 +1008,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
             pollTailEngineFetchInFlight = true
             defer { pollTailEngineFetchInFlight = false }
             do {
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 try await engine.fetchChanges()
                 logger.info("[iCloudTrace] fetchRecentV2 token-fetch ok")
             } catch {
@@ -1047,6 +1058,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     /// `id == X` for SessionV2 since the parent record uses `id`).
     /// Bypasses the 24h time window of fetchRecentV2.
     func fetchSessionPortables(sessionId: String) async throws -> [PortableRecord] {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         let zoneID = CKRecordZone.ID(zoneName: Self.sharedZoneName)
         let registry = SyncableTypeRegistry.shared
         var portables: [PortableRecord] = []
@@ -1067,6 +1079,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
             logger.info("[iCloudTrace] fetchSessionPortables querying type=\(type) sid=\(sessionId.prefix(8))")
             let query = CKQuery(recordType: type, predicate: predicate)
             do {
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 let result = try await container.privateCloudDatabase.records(
                     matching: query,
                     inZoneWith: zoneID,
@@ -1098,10 +1111,12 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     /// server has actually committed the zone. Uses CKModifyRecordZonesOperation
     /// because CKSyncEngine doesn't expose a "wait for zone create" hook.
     private func ensureZonesExist() async {
+        guard !AppProxyNetwork.strictEnabled else { return }
         logger.info("[SyncTransport] ensureZonesExist: starting modifyRecordZones")
         let zones = [Self.sharedZoneName, Self.devicesZoneName, Self.secretsZoneName]
             .map { CKRecordZone(zoneID: CKRecordZone.ID(zoneName: $0)) }
         do {
+            try SystemProxyBoundary.requireAllowed("iCloud")
             let result = try await container.privateCloudDatabase.modifyRecordZones(
                 saving: zones,
                 deleting: []
@@ -1128,9 +1143,15 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     }
 
     func stop() async {
+        v1DeleteOperation?.cancel()
+        v1DeleteOperation = nil
+        completeSendWithError(NSError(domain: "SystemProxyBoundary", code: 1, userInfo: [NSLocalizedDescriptionKey: SystemProxyBoundary.message]))
+        completeFetchWithError(NSError(domain: "SystemProxyBoundary", code: 1, userInfo: [NSLocalizedDescriptionKey: SystemProxyBoundary.message]))
+        let stoppingEngine = syncEngine
         syncEngine = nil
         recentFetchTimer?.cancel()
         recentFetchTimer = nil
+        await stoppingEngine?.cancelOperations()
     }
 
     func observe(handler: @escaping (SyncInboundBatch) -> Void) {
@@ -1140,6 +1161,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     // MARK: - send
 
     func send(_ batch: SyncOutboundBatch, trigger: SyncSendTrigger) async throws -> [SyncOutcome] {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         guard let engine = syncEngine else { throw SyncTransportError.notStarted }
         // H2 fix: refuse overlapping sends rather than clobbering the
         // pending continuation (the first awaiter would hang forever).
@@ -1247,6 +1269,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
             self.sendCompletion = cont
             Task.detached { [weak self] in
                 do {
+                    try SystemProxyBoundary.requireAllowed("iCloud")
                     try await engine.sendChanges()
                     await self?.completeSend()
                 } catch {
@@ -1369,6 +1392,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     // MARK: - fetch
 
     func fetchChanges(trigger: SyncFetchTrigger) async throws -> SyncInboundBatch {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         guard let engine = syncEngine else { throw SyncTransportError.notStarted }
         if fetchCompletion != nil {
             throw SyncTransportError.fetchInFlight
@@ -1378,6 +1402,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
             self.fetchCompletion = cont
             Task.detached {
                 do {
+                    try SystemProxyBoundary.requireAllowed("iCloud")
                     try await engine.fetchChanges()
                 } catch {
                     await self.completeFetchWithError(error)
@@ -1389,6 +1414,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     }
 
     func fullFetch(trigger: SyncFetchTrigger) async throws -> SyncInboundBatch {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         // H5: resume any in-flight send/fetch awaiters with an error
         // before tearing down the engine, otherwise their continuations
         // are silently abandoned (caller hangs forever).
@@ -1430,6 +1456,7 @@ final class ICloudSharedZoneTransport: NSObject, SyncTransport {
     // MARK: - delete
 
     func delete(_ ids: [SyncRecordID]) async throws -> [SyncOutcome] {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         let batch = SyncOutboundBatch(records: [], deletes: ids)
         return try await send(batch, trigger: .manual)
     }
@@ -1574,8 +1601,9 @@ extension ICloudSharedZoneTransport: CKSyncEngineDelegate {
         _ context: CKSyncEngine.SendChangesContext,
         syncEngine: CKSyncEngine
     ) async -> CKSyncEngine.RecordZoneChangeBatch? {
-        await MainActor.run { [weak self] in
-            guard let self else { return nil as CKSyncEngine.RecordZoneChangeBatch? }
+        guard !AppProxyNetwork.strictEnabled else { return nil }
+        return await MainActor.run { [weak self] in
+            guard !AppProxyNetwork.strictEnabled, let self else { return nil as CKSyncEngine.RecordZoneChangeBatch? }
             let recs = self.pendingRecords; self.pendingRecords.removeAll()
             let dels = self.pendingDeletes; self.pendingDeletes.removeAll()
             guard !recs.isEmpty || !dels.isEmpty else { return nil }
@@ -2044,6 +2072,7 @@ extension ICloudSharedZoneTransport: CKSyncEngineDelegate {
 
     @MainActor
     private func triggerV1Deletion() {
+        guard !AppProxyNetwork.strictEnabled else { return }
         guard !v1DeleteInFlight else { return }
         guard !pendingV1Deletions.isEmpty else { return }
         guard v1DeleteConsecutiveFailures < Self.v1DeleteFailureCap else { return }
@@ -2064,6 +2093,7 @@ extension ICloudSharedZoneTransport: CKSyncEngineDelegate {
         Self.republishV1DeletePending(pendingV1Deletions.count)
         let db = CKContainer.default().privateCloudDatabase
         let op = CKModifyRecordsOperation(recordsToSave: nil, recordIDsToDelete: batch)
+        v1DeleteOperation = op
         op.savePolicy = .changedKeys
         // Per-record completion lets us classify .unknownItem (already
         // deleted server-side) as success and drop them from the queue.
