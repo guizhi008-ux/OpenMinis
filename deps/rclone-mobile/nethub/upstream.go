@@ -54,7 +54,11 @@ func DialUpstream(ctx context.Context, base *net.Dialer, u Upstream, addr string
 			return nil, stageErr("proxy-connect", err)
 		}
 		if u.Type == "https" {
-			tc := tls.Client(c, &tls.Config{ServerName: u.Host})
+			serverName := u.TLSServerName
+			if serverName == "" {
+				serverName = u.Host
+			}
+			tc := tls.Client(c, &tls.Config{ServerName: serverName})
 			if err := tc.HandshakeContext(ctx); err != nil {
 				c.Close()
 				return nil, &StageError{Stage: "proxy-tls", Class: ClassTLS, Err: err}
