@@ -103,7 +103,9 @@ func (h *Hub) serveHTTP(f *httpFront, ln net.Listener) {
 			f.mu.Unlock()
 			return
 		}
-		go h.handleHTTP(c)
+		if h.trackClient(c) {
+			go func() { defer h.untrackClient(c); h.handleHTTP(c) }()
+		}
 	}
 }
 
