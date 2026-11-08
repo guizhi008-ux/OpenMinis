@@ -80,6 +80,7 @@ static BOOL parse_lat_lon(NSString *str, CLLocationCoordinate2D *outCoord) {
 
 /// Geocode an address string synchronously. Returns kCLLocationCoordinate2DInvalid on failure.
 static CLLocationCoordinate2D geocode_address(NSString *address) {
+    if (noff_strict_proxy_enabled()) return kCLLocationCoordinate2DInvalid;
     __block CLLocationCoordinate2D result = kCLLocationCoordinate2DInvalid;
     dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
@@ -115,6 +116,7 @@ static MKDirectionsTransportType transport_type_for_mode(NSString *mode) {
 // ── Subcommands ──
 
 static int cmd_search(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL compact, BOOL quiet) {
+    if (noff_reject_strict_proxy(TOOL_NAME, @"search", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
     NSString *query = noff_find_arg(argc, argv, "--query");
     if (!query) {
         noff_emit_help(stderr_fd, HELP_TEXT);
@@ -153,6 +155,11 @@ static int cmd_search(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL 
     dispatch_semaphore_t mainSem = dispatch_semaphore_create(0);
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (noff_strict_proxy_enabled()) {
+            errorMsg = noff_strict_proxy_message();
+            dispatch_semaphore_signal(mainSem);
+            return;
+        }
         MKLocalSearchRequest *request = [[MKLocalSearchRequest alloc] init];
         request.naturalLanguageQuery = query;
 
@@ -226,6 +233,13 @@ static int cmd_search(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL 
     });
     dispatch_semaphore_wait(mainSem, dispatch_time(DISPATCH_TIME_NOW, 20 * NSEC_PER_SEC));
 
+    if (noff_reject_strict_proxy(TOOL_NAME, @"search", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
+
+    if ([errorMsg isEqualToString:noff_strict_proxy_message()]) {
+        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"search", NOFF_ERR_NOT_AVAILABLE,
+                                               errorMsg), compact, quiet);
+        return NOFF_EXIT_NOT_AVAILABLE;
+    }
     if (errorMsg || !resultData) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"search",
                                              NOFF_ERR_INTERNAL_ERROR,
@@ -239,6 +253,7 @@ static int cmd_search(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL 
 }
 
 static int cmd_route(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL compact, BOOL quiet) {
+    if (noff_reject_strict_proxy(TOOL_NAME, @"route", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
     NSString *fromStr = noff_find_arg(argc, argv, "--from");
     NSString *toStr = noff_find_arg(argc, argv, "--to");
 
@@ -254,6 +269,8 @@ static int cmd_route(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL c
     NSString *mode = noff_find_arg(argc, argv, "--mode") ?: @"driving";
 
     CLLocationCoordinate2D fromCoord = resolve_location(fromStr);
+    if (noff_reject_strict_proxy(TOOL_NAME, @"route", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
+
     if (!CLLocationCoordinate2DIsValid(fromCoord)) {
         noff_emit_help(stderr_fd, HELP_TEXT);
         NSDictionary *err = noff_json_error(TOOL_NAME, @"route",
@@ -264,6 +281,8 @@ static int cmd_route(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL c
     }
 
     CLLocationCoordinate2D toCoord = resolve_location(toStr);
+    if (noff_reject_strict_proxy(TOOL_NAME, @"route", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
+
     if (!CLLocationCoordinate2DIsValid(toCoord)) {
         noff_emit_help(stderr_fd, HELP_TEXT);
         NSDictionary *err = noff_json_error(TOOL_NAME, @"route",
@@ -281,6 +300,11 @@ static int cmd_route(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL c
     dispatch_semaphore_t mainSem = dispatch_semaphore_create(0);
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (noff_strict_proxy_enabled()) {
+            errorMsg = noff_strict_proxy_message();
+            dispatch_semaphore_signal(mainSem);
+            return;
+        }
         MKDirectionsRequest *request = [[MKDirectionsRequest alloc] init];
         MKPlacemark *srcPlacemark = [[MKPlacemark alloc] initWithCoordinate:fromCoord];
         MKPlacemark *dstPlacemark = [[MKPlacemark alloc] initWithCoordinate:toCoord];
@@ -319,6 +343,13 @@ static int cmd_route(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL c
     });
     dispatch_semaphore_wait(mainSem, dispatch_time(DISPATCH_TIME_NOW, 35 * NSEC_PER_SEC));
 
+    if (noff_reject_strict_proxy(TOOL_NAME, @"route", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
+
+    if ([errorMsg isEqualToString:noff_strict_proxy_message()]) {
+        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"route", NOFF_ERR_NOT_AVAILABLE,
+                                               errorMsg), compact, quiet);
+        return NOFF_EXIT_NOT_AVAILABLE;
+    }
     if (errorMsg || !resultData) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"route",
                                              NOFF_ERR_INTERNAL_ERROR,
@@ -332,6 +363,7 @@ static int cmd_route(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL c
 }
 
 static int cmd_eta(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL compact, BOOL quiet) {
+    if (noff_reject_strict_proxy(TOOL_NAME, @"eta", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
     NSString *fromStr = noff_find_arg(argc, argv, "--from");
     NSString *toStr = noff_find_arg(argc, argv, "--to");
 
@@ -347,6 +379,8 @@ static int cmd_eta(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
     NSString *mode = noff_find_arg(argc, argv, "--mode") ?: @"driving";
 
     CLLocationCoordinate2D fromCoord = resolve_location(fromStr);
+    if (noff_reject_strict_proxy(TOOL_NAME, @"eta", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
+
     if (!CLLocationCoordinate2DIsValid(fromCoord)) {
         noff_emit_help(stderr_fd, HELP_TEXT);
         NSDictionary *err = noff_json_error(TOOL_NAME, @"eta",
@@ -357,6 +391,8 @@ static int cmd_eta(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
     }
 
     CLLocationCoordinate2D toCoord = resolve_location(toStr);
+    if (noff_reject_strict_proxy(TOOL_NAME, @"eta", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
+
     if (!CLLocationCoordinate2DIsValid(toCoord)) {
         noff_emit_help(stderr_fd, HELP_TEXT);
         NSDictionary *err = noff_json_error(TOOL_NAME, @"eta",
@@ -373,6 +409,11 @@ static int cmd_eta(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
     dispatch_semaphore_t mainSem = dispatch_semaphore_create(0);
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (noff_strict_proxy_enabled()) {
+            errorMsg = noff_strict_proxy_message();
+            dispatch_semaphore_signal(mainSem);
+            return;
+        }
         MKDirectionsRequest *request = [[MKDirectionsRequest alloc] init];
         MKPlacemark *srcPlacemark = [[MKPlacemark alloc] initWithCoordinate:fromCoord];
         MKPlacemark *dstPlacemark = [[MKPlacemark alloc] initWithCoordinate:toCoord];
@@ -398,6 +439,13 @@ static int cmd_eta(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
     });
     dispatch_semaphore_wait(mainSem, dispatch_time(DISPATCH_TIME_NOW, 20 * NSEC_PER_SEC));
 
+    if (noff_reject_strict_proxy(TOOL_NAME, @"eta", stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
+
+    if ([errorMsg isEqualToString:noff_strict_proxy_message()]) {
+        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"eta", NOFF_ERR_NOT_AVAILABLE,
+                                               errorMsg), compact, quiet);
+        return NOFF_EXIT_NOT_AVAILABLE;
+    }
     if (errorMsg || !resultData) {
         NSDictionary *err = noff_json_error(TOOL_NAME, @"eta",
                                              NOFF_ERR_INTERNAL_ERROR,
