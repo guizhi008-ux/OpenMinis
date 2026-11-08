@@ -102,8 +102,10 @@ func (m *Manager) Configure(data []byte) (Status, error) {
 		upstream.Host = addresses[0].IP.String()
 		if outbound != nil {
 			outbound["server"] = upstream.Host
-			if tls, ok := outbound["tls"].(map[string]any); ok && tls["server_name"] == nil {
-				tls["server_name"] = original
+			if tls, ok := outbound["tls"].(map[string]any); ok {
+				if sni, _ := tls["server_name"].(string); sni == "" {
+					tls["server_name"] = original
+				}
 			}
 		}
 		if outbound == nil && upstream.Type == "https" {
@@ -252,9 +254,59 @@ func validateOutbound(n Node) error {
 		}
 		for k := range v {
 			switch k {
-			case "enabled", "server_name", "insecure", "alpn":
+			case "enabled", "server_name", "insecure", "alpn", "utls", "reality":
 			default:
 				return errLink
+			}
+		}
+		_, hasUTLS := v["utls"]
+		_, hasReality := v["reality"]
+		if hasUTLS != hasReality {
+			return errLink
+		}
+		if hasReality {
+			if (expected != "vless" && expected != "trojan") || o["transport"] != nil {
+				return errLink
+			}
+			if insecure, _ := v["insecure"].(bool); insecure {
+				return errLink
+			}
+			u, ok := v["utls"].(map[string]any)
+			if !ok || u["enabled"] != true {
+				return errLink
+			}
+			for k := range u {
+				if k != "enabled" && k != "fingerprint" {
+					return errLink
+				}
+			}
+			fp, _ := u["fingerprint"].(string)
+			switch fp {
+			case "chrome", "firefox", "safari", "ios", "android", "edge", "360", "qq", "random", "randomized":
+			default:
+				return errLink
+			}
+			r, ok := v["reality"].(map[string]any)
+			if !ok || r["enabled"] != true {
+				return errLink
+			}
+			for k := range r {
+				if k != "enabled" && k != "public_key" && k != "short_id" {
+					return errLink
+				}
+			}
+			pbk, _ := r["public_key"].(string)
+			if key, e := decode64(pbk); e != nil || len(key) != 32 {
+				return errLink
+			}
+			if sidRaw, hasSID := r["short_id"]; hasSID {
+				sid, ok := sidRaw.(string)
+				if !ok || sid == "" || len(sid) > 16 || len(sid)%2 != 0 {
+					return errLink
+				}
+				if _, e := hex.DecodeString(sid); e != nil {
+					return errLink
+				}
 			}
 		}
 	}
