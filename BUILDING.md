@@ -124,6 +124,47 @@ by hand.
 
 ### 2. Build the app
 
+#### App-only network proxy in this branch
+
+Rebuild **both** iSH and the Go library after checking out these changes:
+
+```sh
+./deps/build_ish.sh
+./deps/build_rclone_ios.sh
+```
+
+The iSH script applies the fingerprint-checked guest socket patch to the pinned
+submodule; it refuses a different revision. The Go script includes sing-box
+v1.14.4 in the existing runtime and stages the pinned rclone source beneath
+`deps/build/`. A hash-checked Go overlay routes its central dialer, including
+SMB, through the app policy. Neither script modifies the Go module cache.
+Do not substitute an unpatched `go build ./librclone`: the app refuses to enable
+strict mode when the generated library lacks the network-hook marker.
+
+For Linux Go integration tests (not iOS validation), use:
+
+```sh
+cd deps/rclone-mobile
+python3 ../../scripts/rclone_proxy_overlay.py --output ../build/proxy-tests
+go test -modfile=../build/proxy-tests/go.mod \
+  -overlay=../build/proxy-tests/overlay.json -tags with_utls -race ./...
+```
+
+Portable guest adapter tests need a host C compiler and permission to create
+loopback sockets:
+
+```sh
+./deps/patches/ish-proxy/tests/run.sh
+CFLAGS='-fsanitize=address,undefined -g' ./deps/patches/ish-proxy/tests/run.sh
+```
+
+See [proxy usage and system boundaries](docs/ios-app-proxy.md). The added
+`AppProxyNetworkTests` and `AppProxyWebKitTests` must also run in the Xcode test
+target. Before calling an iPhone build verified, test guest TCP/UDP/DNS and local
+servers, WebKit pages/popups, node switching, failure with no direct fallback,
+and foreground restoration on the device. Linux tests do not certify Darwin
+socket readiness, Apple proxy behavior, code signing, or App Store distribution.
+
 ```sh
 open src/ios/Minis.xcodeproj
 ```
