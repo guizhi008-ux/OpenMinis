@@ -66,7 +66,9 @@ final class WebViewHolder: NSObject, ObservableObject {
             SafeKVCSetTrue.apply(prefs, key: "allowUniversalAccessFromFileURLs")
         }
 
+        AppProxyWebKit.prepare(config)
         webView = WKWebView(frame: .zero, configuration: config)
+        AppProxyWebKit.register(webView)
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
