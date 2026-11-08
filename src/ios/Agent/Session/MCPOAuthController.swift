@@ -370,6 +370,7 @@ final class MCPOAuthController: NSObject, ObservableObject {
     /// auth sheet; on success stores tokens (Keychain) and materializes the
     /// guest bridge file.
     func authorize(server: String, oauth: MCPOAuthConfig) async throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         guard !oauth.clientId.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw OAuthError.badConfig(AppLocalized("Client ID is required."))
         }
@@ -462,7 +463,7 @@ final class MCPOAuthController: NSObject, ObservableObject {
         req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         req.httpBody = form.map { "\($0.key)=\(Self.formEncode($0.value))" }
             .joined(separator: "&").data(using: .utf8)
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        let (data, resp) = try await AppProxyNetwork.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse, http.statusCode < 400 else {
             let body = String(data: data, encoding: .utf8)?.prefix(200) ?? ""
             logger.error("[Authorize] '\(server)' token exchange HTTP \((resp as? HTTPURLResponse)?.statusCode ?? -1)")
@@ -503,7 +504,7 @@ final class MCPOAuthController: NSObject, ObservableObject {
         callbackServer = server
         try server.start()
 
-        presentSafari(url: authURL)
+        try presentSafari(url: authURL)
         let result: OAuthCallbackResult
         do {
             result = try await server.waitForCallback(timeout: 300)
@@ -523,6 +524,7 @@ final class MCPOAuthController: NSObject, ObservableObject {
 
     /// Custom-scheme fallback (e.g. Google iOS-client reversed client id).
     private func runSchemeFlow(authURL: URL, scheme: String, state: String) async throws -> String {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         let callbackURL: URL = try await withCheckedThrowingContinuation { cont in
             let session = ASWebAuthenticationSession(url: authURL, callbackURLScheme: scheme) { url, error in
                 if let url {
@@ -558,7 +560,8 @@ final class MCPOAuthController: NSObject, ObservableObject {
 
     /// Present the authorization page in in-app Safari, on top of whatever is
     /// currently presented (the MCP form sheet). Mirrors ClaudeOAuthManager.
-    private func presentSafari(url: URL) {
+    private func presentSafari(url: URL) throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first,
               let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
