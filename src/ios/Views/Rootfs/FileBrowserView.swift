@@ -557,7 +557,9 @@ private struct HTMLFilePreview: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = true
         config.setURLSchemeHandler(BrowserUseManager.sharedMinisSchemeHandler, forURLScheme: "minis")
+        AppProxyWebKit.prepare(config)
         let webView = WKWebView(frame: .zero, configuration: config)
+        AppProxyWebKit.register(webView)
         webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         return webView
     }
