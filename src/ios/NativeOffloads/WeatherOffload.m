@@ -106,6 +106,11 @@ static CLLocation *get_location_sync(int argc, char **argv) {
     __block NoffWeatherLocationDelegate *delegate = [[NoffWeatherLocationDelegate alloc] init];
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (noff_strict_proxy_enabled()) {
+            delegate.error = noff_strict_proxy_error();
+            dispatch_semaphore_signal(delegate.semaphore);
+            return;
+        }
         CLLocationManager *manager = [[CLLocationManager alloc] init];
         manager.delegate = delegate;
         manager.desiredAccuracy = kCLLocationAccuracyKilometer;
@@ -115,6 +120,11 @@ static CLLocation *get_location_sync(int argc, char **argv) {
             [manager requestWhenInUseAuthorization];
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC),
                            dispatch_get_main_queue(), ^{
+                if (noff_strict_proxy_enabled()) {
+                    delegate.error = noff_strict_proxy_error();
+                    dispatch_semaphore_signal(delegate.semaphore);
+                    return;
+                }
                 [manager requestLocation];
             });
         } else if (status == kCLAuthorizationStatusAuthorizedWhenInUse ||
@@ -164,8 +174,11 @@ static int weather_handler(int argc, char **argv,
         return NOFF_EXIT_INVALID_ARGS;
     }
 
+    if (noff_reject_strict_proxy(TOOL_NAME, subcmd, stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
+
     // Get location
     CLLocation *loc = get_location_sync(argc, argv);
+    if (noff_reject_strict_proxy(TOOL_NAME, subcmd, stdout_fd, compact, quiet)) return NOFF_EXIT_NOT_AVAILABLE;
     if (!loc) {
         NSDictionary *err = noff_json_error(TOOL_NAME, subcmd,
                                              NOFF_ERR_NOT_AVAILABLE,
