@@ -29,7 +29,6 @@ import (
 	"tailscale.com/feature/buildfeatures"
 	"tailscale.com/ipn"
 	"tailscale.com/ipn/ipnstate"
-	"tailscale.com/net/netmon"
 	"tailscale.com/net/socks5"
 	ts "tailscale.com/tsnet"
 )
@@ -124,7 +123,7 @@ func backendLogf(format string, args ...any) {
 // (from NWPathMonitor) to netmon; on Darwin netmon prefers it over the
 // routing-table guess, so Wi-Fi <-> cellular switches are picked up at once.
 func SetDefaultRouteInterface(ifName string) {
-	netmon.UpdateLastKnownDefaultRouteInterface(ifName)
+	setDefaultRouteInterface(ifName)
 }
 
 // Start brings the node up. authKey may be empty: the node then waits for an
