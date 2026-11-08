@@ -58,6 +58,7 @@ final class CodexOAuthManager: NSObject, ObservableObject {
     }
 
     func login(instanceId: String) async throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         logger.info("=== Codex OAuth login started (instance: \(instanceId)) ===")
         // Defensive cleanup: stop any leftover server from a previous failed attempt
         callbackServer?.stop()
@@ -99,7 +100,7 @@ final class CodexOAuthManager: NSObject, ObservableObject {
         logger.info("Authorization URL: \(authorizationURL.absoluteString)")
 
         // 3. Open in-app Safari
-        presentSafariViewController(url: authorizationURL)
+        try presentSafariViewController(url: authorizationURL)
 
         // 4. Wait for callback (5 min timeout)
         logger.info("Waiting for callback...")
@@ -283,7 +284,7 @@ final class CodexOAuthManager: NSObject, ObservableObject {
 
         logger.info("\(context) POST \(self.tokenURL)")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await AppProxyNetwork.shared.data(for: request)
         let http = response as? HTTPURLResponse
         let statusCode = http?.statusCode ?? -1
         let responseBody = String(data: data, encoding: .utf8) ?? "<binary>"
@@ -364,7 +365,8 @@ final class CodexOAuthManager: NSObject, ObservableObject {
 
     // MARK: - In-App Safari
 
-    private func presentSafariViewController(url: URL) {
+    private func presentSafariViewController(url: URL) throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first,
               let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
