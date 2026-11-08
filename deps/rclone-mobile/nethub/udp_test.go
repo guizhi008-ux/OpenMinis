@@ -361,7 +361,9 @@ func TestUDPSpoofedSourceDropped(t *testing.T) {
 	other, _ := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	defer other.Close()
 	other.WriteToUDP(append(udpHeader("203.0.113.9", 9), "x"...), a.relay)
-	waitFor(t, "the spoofed datagram to be counted", func() bool { return h.UDPStats().Spoofed == 1 })
+	waitFor(t, "the spoofed datagram to be counted and logged", func() bool {
+		return h.UDPStats().Spoofed == 1 && logs.has("not the declared client")
+	})
 	if h.UDPStats().Sent != 0 || !logs.has("not the declared client") {
 		t.Fatalf("spoofed datagram was relayed or not logged: %+v", h.UDPStats())
 	}
