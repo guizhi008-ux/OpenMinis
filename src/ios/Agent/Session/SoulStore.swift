@@ -365,7 +365,7 @@ enum SoulIconSource {
         cfg.timeoutIntervalForResource = downloadTimeout
         cfg.httpCookieStorage = nil          // no ambient credentials
         cfg.urlCredentialStorage = nil
-        let session = URLSession(configuration: cfg)
+        let session = AppProxyNetwork.makeSession(configuration: cfg)
         defer { session.invalidateAndCancel() }
 
         let data: Data, response: URLResponse
