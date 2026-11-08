@@ -5,8 +5,8 @@ import AVFoundation
 // MARK: - Built-in system voice provider
 //
 // Uses iOS SFSpeechRecognizer (ASR) and AVSpeechSynthesizer (TTS). Works
-// offline with no API key. Exposed through the provider system as a built-in
-// fallback so voice input/output is always available.
+// with no API key; on-device recognition depends on the selected locale.
+// Strict proxy mode rejects cloud recognition and unsupported on-device locales.
 
 final class SystemVoiceProvider: NSObject, VoiceInputCapable, VoiceOutputCapable {
 
@@ -97,10 +97,22 @@ final class SystemVoiceProvider: NSObject, VoiceInputCapable, VoiceOutputCapable
     /// on-device model is ready and the first utterance isn't silently dropped.
     /// Safe to call repeatedly; cheap once cached.
     func prewarm(language: String?) {
+        guard !AppProxyNetwork.strictEnabled else { return }
         guard SFSpeechRecognizer.authorizationStatus() == .authorized else { return }
         let loc = resolveLocale(forLanguage: language)
         _ = cachedRecognizer(for: loc)
         VoiceLog.log("prewarm recognizer for \(loc.identifier)")
+    }
+
+    /// Strict mode never permits Apple's server recognition, including a locale
+    /// that lacks the on-device model. Keep the persisted model choice intact.
+    static func requiresOnDeviceRecognition(requested: Bool?, supported: Bool, strict: Bool) throws -> Bool {
+        let useOnDevice = (requested ?? supported) && supported
+        if strict && !useOnDevice {
+            throw VoiceProviderError.unsupported(
+                "Strict proxy mode requires supported on-device speech. Apple cloud speech cannot use the app proxy. Choose a supported language or a provider routed through the app proxy; saved settings are preserved.")
+        }
+        return useOnDevice
     }
 
     // MARK: - Audio validation
@@ -155,14 +167,10 @@ final class SystemVoiceProvider: NSObject, VoiceInputCapable, VoiceOutputCapable
             throw VoiceProviderError.unsupported("System speech recognizer unavailable for this language")
         }
 
-        // Decide on-device vs server. The Offline model forces on-device; Online
-        // forces server; .auto (nil) prefers on-device when the recognizer supports
-        // it for this locale. On-device that isn't supported here would fail, so we
-        // only set the flag when the recognizer reports support — otherwise fall back
-        // to server so recognition still works (Offline for an unsupported language
-        // degrades to Online rather than erroring).
-        let wantOnDevice = request.onDeviceRecognition ?? recognizer.supportsOnDeviceRecognition
-        let useOnDevice = wantOnDevice && recognizer.supportsOnDeviceRecognition
+        let useOnDevice = try Self.requiresOnDeviceRecognition(
+            requested: request.onDeviceRecognition,
+            supported: recognizer.supportsOnDeviceRecognition,
+            strict: AppProxyNetwork.strictEnabled)
 
         // [T-ios-speech-no-audio-track] Reject an empty/undersized buffer before
         // it ever becomes a file. A WAV header alone is 44 bytes and carries no
@@ -229,6 +237,15 @@ final class SystemVoiceProvider: NSObject, VoiceInputCapable, VoiceOutputCapable
                 }
             }
 
+            do {
+                recognitionRequest.requiresOnDeviceRecognition = try Self.requiresOnDeviceRecognition(
+                    requested: request.onDeviceRecognition,
+                    supported: recognizer.supportsOnDeviceRecognition,
+                    strict: AppProxyNetwork.strictEnabled)
+            } catch {
+                continuation.resume(throwing: error)
+                return
+            }
             task = recognizer.recognitionTask(with: recognitionRequest) { result, error in
                 if let result {
                     let text = result.bestTranscription.formattedString
