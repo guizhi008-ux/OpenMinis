@@ -21,12 +21,12 @@ class VoiceProvider: VoiceInputCapable, VoiceOutputCapable {
 
     /// Dedicated session: TTS responses can be large and slow, so use a
     /// generous request timeout instead of URLSession.shared's default.
-    private static let session: URLSession = {
+    private static var session: URLSession {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 120
         config.timeoutIntervalForResource = 120
-        return URLSession(configuration: config)
-    }()
+        return AppProxyNetwork.cachedSession(key: "voice", configuration: config)
+    }
 
     init(providerId: String, baseURL: String, apiKey: String? = nil) {
         self.providerId = providerId
