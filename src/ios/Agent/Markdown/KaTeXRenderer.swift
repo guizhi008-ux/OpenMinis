@@ -108,7 +108,9 @@ final class KaTeXRenderer: NSObject {
         // non-interactive so it doesn't interfere with the UI.
         // Position offscreen instead of alpha=0 — iOS skips rendering/compositing
         // for near-invisible views, causing takeSnapshot to return blank images.
+        AppProxyWebKit.prepare(config)
         let wv = WKWebView(frame: CGRect(x: -2048, y: -2048, width: 1024, height: 256), configuration: config)
+        AppProxyWebKit.register(wv)
         wv.isOpaque = false
         wv.backgroundColor = .clear
         wv.scrollView.backgroundColor = .clear
