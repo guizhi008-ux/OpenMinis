@@ -139,7 +139,16 @@ static dispatch_queue_t authQueue(void) {
     return q;
 }
 
+static BOOL noff_speech_requires_on_device(BOOL requested, BOOL supported) {
+    return requested && supported;
+}
+
 static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
+    BOOL onDevice = noff_has_flag(argc, argv, "--on-device");
+    if (!onDevice && noff_reject_strict_proxy(TOOL_NAME, @"transcribe", stdout_fd, compact, quiet)) {
+        return NOFF_EXIT_NOT_AVAILABLE;
+    }
+
     // Check authorization
     __block SFSpeechRecognizerAuthorizationStatus authStatus = [SFSpeechRecognizer authorizationStatus];
 
@@ -212,8 +221,6 @@ static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BO
     if (duration <= 0) duration = 10.0;
     if (duration > 60) duration = 60.0;
     NSString *langStr = noff_find_arg(argc, argv, "--language");
-    BOOL onDevice = noff_has_flag(argc, argv, "--on-device");
-
     // Create recognizer
     SFSpeechRecognizer *recognizer;
     if (langStr) {
@@ -228,6 +235,11 @@ static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BO
                                              NOFF_ERR_NOT_AVAILABLE,
                                              @"Speech recognizer not available for the specified locale.");
         noff_emit_json(stdout_fd, err, compact, quiet);
+        return NOFF_EXIT_NOT_AVAILABLE;
+    }
+
+    if (!noff_speech_requires_on_device(onDevice, recognizer.supportsOnDeviceRecognition)
+        && noff_reject_strict_proxy(TOOL_NAME, @"transcribe", stdout_fd, compact, quiet)) {
         return NOFF_EXIT_NOT_AVAILABLE;
     }
 
@@ -270,12 +282,24 @@ static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BO
         }
 
         dispatch_async(dispatch_get_main_queue(), ^{
+            if (noff_strict_proxy_enabled()
+                && !noff_speech_requires_on_device(onDevice, recognizer.supportsOnDeviceRecognition)) {
+                recognitionError = noff_strict_proxy_error();
+                dispatch_semaphore_signal(sem);
+                return;
+            }
             SFSpeechURLRecognitionRequest *request =
                 [[SFSpeechURLRecognitionRequest alloc] initWithURL:fileURL];
             request.shouldReportPartialResults = YES;
 
             if (onDevice && recognizer.supportsOnDeviceRecognition) {
                 request.requiresOnDeviceRecognition = YES;
+            }
+
+            if (noff_strict_proxy_enabled() && !request.requiresOnDeviceRecognition) {
+                recognitionError = noff_strict_proxy_error();
+                dispatch_semaphore_signal(sem);
+                return;
             }
 
             [recognizer recognitionTaskWithRequest:request
@@ -310,6 +334,12 @@ static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BO
     } else {
         // Set up audio engine and recognition request (mic source)
         dispatch_async(dispatch_get_main_queue(), ^{
+            if (noff_strict_proxy_enabled()
+                && !noff_speech_requires_on_device(onDevice, recognizer.supportsOnDeviceRecognition)) {
+                recognitionError = noff_strict_proxy_error();
+                dispatch_semaphore_signal(sem);
+                return;
+            }
             AVAudioSession *audioSession = [AVAudioSession sharedInstance];
             NSError *sessionError = nil;
             [audioSession setCategory:AVAudioSessionCategoryRecord
@@ -325,6 +355,12 @@ static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BO
 
             if (onDevice && recognizer.supportsOnDeviceRecognition) {
                 request.requiresOnDeviceRecognition = YES;
+            }
+
+            if (noff_strict_proxy_enabled() && !request.requiresOnDeviceRecognition) {
+                recognitionError = noff_strict_proxy_error();
+                dispatch_semaphore_signal(sem);
+                return;
             }
 
             [recognizer recognitionTaskWithRequest:request
@@ -432,6 +468,12 @@ static int cmd_transcribe(int argc, char **argv, int stdout_fd, BOOL compact, BO
                                              @"Recognition timed out before receiving results.");
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_ERROR;
+    }
+
+    if ([recognitionError.domain isEqualToString:@"SystemProxyBoundary"]) {
+        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"transcribe",
+            NOFF_ERR_NOT_AVAILABLE, recognitionError.localizedDescription), compact, quiet);
+        return NOFF_EXIT_NOT_AVAILABLE;
     }
 
     if (recognitionError && !finalText) {
