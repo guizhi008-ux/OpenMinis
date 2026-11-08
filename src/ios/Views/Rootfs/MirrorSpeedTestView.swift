@@ -335,7 +335,7 @@ final class MirrorSpeedTestViewModel: ObservableObject {
 
         let start = CFAbsoluteTimeGetCurrent()
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await AppProxyNetwork.shared.data(for: request)
             let elapsed = CFAbsoluteTimeGetCurrent() - start
             let ms = Int(elapsed * 1000)
             let httpStatus = (response as? HTTPURLResponse)?.statusCode ?? 0
