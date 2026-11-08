@@ -155,8 +155,19 @@ final class VideoAttachment: NSTextAttachment {
             var fileURL: URL?
             if let url = URL(string: src), url.scheme == "minis" {
                 fileURL = resolveMinisFileURLForNativeText(url: url)
-            } else if let url = URL(string: src) {
+            } else if let url = URL(string: src), url.isFileURL {
                 fileURL = url
+            } else if let url = URL(string: src), ["https", "http"].contains(url.scheme?.lowercased() ?? "") {
+                // AVFoundation has no per-asset app proxy policy. Download via
+                // the controlled session before handing it a local asset.
+                if let (temporary, response) = try? await AppProxyNetwork.shared.download(from: url),
+                   let response = response as? HTTPURLResponse, (200...299).contains(response.statusCode) {
+                    let local = FileManager.default.temporaryDirectory
+                        .appendingPathComponent("proxy-media-" + UUID().uuidString)
+                        .appendingPathExtension(url.pathExtension)
+                    do { try FileManager.default.moveItem(at: temporary, to: local); fileURL = local }
+                    catch { fileURL = nil }
+                }
             }
 
             guard let fileURL else {
