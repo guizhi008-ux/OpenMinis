@@ -78,6 +78,10 @@ extension Notification.Name {
 
 @main
 struct MinisApp: App {
+    // Stored properties initialize in source order: restore the route before
+    // any coordinators/providers below can perform network work.
+    private let proxyStartup: Void = AppProxyStore.shared.restoreBeforeNetworking()
+
     /// [T-voice-input-mode-preference-ios] Process launch instant, pinned in
     /// the App initializer (Swift statics are lazy — referencing it from
     /// init() makes it accurate). Used to tell a cold-launch LANDING chat
@@ -507,6 +511,7 @@ struct MinisApp: App {
     private func handleScenePhaseChange(_ phase: ScenePhase) {
         switch phase {
         case .active:
+            AppProxyStore.shared.checkOnForeground()
             let remaining = UIApplication.shared.backgroundTimeRemaining
             if let entry = backgroundEntryDate {
                 let elapsed = Date().timeIntervalSince(entry)
@@ -791,7 +796,7 @@ struct MinisApp: App {
         guard previous != current else { return }
         UserDefaults.standard.set(current, forKey: key)
 
-        guard let container = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.openminis.app") else { return }
+        guard let container = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.927f95962c559f66.1") else { return }
         let dir = container.appendingPathComponent("MinisConfig", isDirectory: true)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appendingPathComponent("fp-sync-trace.log")
@@ -1178,7 +1183,7 @@ struct MinisApp: App {
     private static func migrateSharedDirToAppGroup() {
         let fm = FileManager.default
         let library = fm.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let container = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.openminis.app")!
+        let container = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.927f95962c559f66.1")!
 
         let migrations: [(source: URL, dest: URL, label: String)] = [
             // Legacy Library/MinisChat/shared → new shared
@@ -1219,7 +1224,7 @@ struct MinisApp: App {
     /// targets logged during MOUNT setup.
     private static func logFPSyncTracePaths() {
         let fm = FileManager.default
-        let groupID = "group.com.openminis.app"
+        let groupID = "group.927f95962c559f66.1"
         let containerURL = fm.containerURL(forSecurityApplicationGroupIdentifier: groupID)
         let containerPath = containerURL?.path ?? "<nil>"
         let resolvedContainer = containerURL?.resolvingSymlinksInPath().path ?? "<nil>"
