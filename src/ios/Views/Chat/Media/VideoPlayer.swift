@@ -132,6 +132,8 @@ struct MinisVideoPlayerView: View {
     }
 
     private func loadThumbnail() {
+        guard fileURL.isFileURL else { return }
+        do { try SystemProxyBoundary.requireLocalFileAccess(fileURL) } catch { return }
         let cacheKey = fileURL.path
         // Check cache first — avoids regenerating on cell recycle
         if let cached = MinisMediaCache.shared.thumbnail(for: cacheKey) {
@@ -359,6 +361,8 @@ struct MinisVideoFullscreenPlayer: View {
         }
         .animation(.easeInOut(duration: 0.25), value: showControls)
         .onAppear {
+            guard fileURL.isFileURL else { return }
+            do { try SystemProxyBoundary.requireLocalFileAccess(fileURL) } catch { return }
             let p: AVPlayer
             if let externalPlayer {
                 p = externalPlayer
