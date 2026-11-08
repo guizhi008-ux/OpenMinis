@@ -127,6 +127,10 @@ struct KimiDeviceLoginSheet: View {
     }
 
     private func start() {
+        guard !AppProxyNetwork.strictEnabled else {
+            phase = .failed(SystemProxyBoundary.message)
+            return
+        }
         loginTask?.cancel()
         copied = false
         phase = .starting
@@ -182,6 +186,10 @@ struct KimiDeviceLoginSheet: View {
     /// pages, rather than jumping out to system Safari. Presented from the
     /// top-most VC (which is this sheet) so it stacks over the login sheet.
     private func presentSafari(_ url: URL) {
+        guard !AppProxyNetwork.strictEnabled else {
+            phase = .failed(SystemProxyBoundary.message)
+            return
+        }
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first,
               let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
