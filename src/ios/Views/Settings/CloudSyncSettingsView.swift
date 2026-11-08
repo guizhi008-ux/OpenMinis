@@ -17,8 +17,17 @@ struct CloudSyncSettingsView: View {
     @State private var providersSize: Int64 = 0
     @State private var envVarsSize: Int64 = 0
 
+    @State private var proxyPaused = AppProxyNetwork.strictEnabled
+
     var body: some View {
         List {
+            if proxyPaused {
+                Section {
+                    Text(SystemProxyBoundary.message)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
             syncToggleSection
             if engine.isEnabled {
                 uploadSection
@@ -26,6 +35,9 @@ struct CloudSyncSettingsView: View {
             }
             advancedSection
             dangerZoneSection
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appProxyDidChange)) { _ in
+            proxyPaused = AppProxyNetwork.strictEnabled
         }
         .navigationTitle("iCloud Sync")
         .navigationBarTitleDisplayMode(.inline)
