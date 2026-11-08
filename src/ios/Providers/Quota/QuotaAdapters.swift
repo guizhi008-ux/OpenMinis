@@ -121,9 +121,7 @@ extension QuotaHTTPTransport {
 /// balance response must never land in the shared URLCache.
 final class QuotaURLSessionTransport: QuotaHTTPTransport, @unchecked Sendable {
     static let shared = QuotaURLSessionTransport()
-    private let session: URLSession
-
-    init() {
+    private var session: URLSession {
         let cfg = URLSessionConfiguration.ephemeral
         cfg.timeoutIntervalForRequest = 10
         cfg.timeoutIntervalForResource = 20
@@ -131,7 +129,7 @@ final class QuotaURLSessionTransport: QuotaHTTPTransport, @unchecked Sendable {
         cfg.urlCache = nil
         cfg.httpCookieStorage = nil
         cfg.httpShouldSetCookies = false
-        session = URLSession(configuration: cfg)
+        return AppProxyNetwork.cachedSession(key: "quota", configuration: cfg)
     }
 
     func get(_ url: URL, bearer: String, headers: [String: String]) async throws -> QuotaHTTPResponse {
