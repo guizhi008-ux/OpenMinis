@@ -133,6 +133,9 @@ func realityDial(t *testing.T, link, target string) error {
 	if e != nil || len(r.Nodes) != 1 {
 		t.Fatalf("import: %v %+v", e, r)
 	}
+	if e := validateOutbound(r.Nodes[0]); e != nil {
+		t.Fatalf("validateOutbound rejected reality node: %v", e)
+	}
 	core, port, e := startCore(r.Nodes[0].Outbound, "core-password")
 	if e != nil {
 		t.Fatalf("core start: %v", e)
