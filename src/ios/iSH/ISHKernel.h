@@ -30,6 +30,15 @@ typedef void (^ISHCommandCompletionCallback)(NSString *output, NSError * _Nullab
 /// Set before calling executeCommand:. Keys and values are strings.
 @property (nonatomic, copy, nullable) NSDictionary<NSString *, NSString *> *customEnvironment;
 
+/// Atomically replace the app-only guest socket policy. Existing guest network
+/// sockets are cancelled. Configure before starting/restoring guest execution.
+/// Returns 0 on success or a negative errno; invalid enabled policy fails closed.
+- (int)configureProxyWithHost:(NSString *)host
+                        port:(uint16_t)port
+                    username:(NSString *)username
+                    password:(NSString *)password
+                     enabled:(BOOL)enabled;
+
 /// Initialize kernel and mount root filesystem
 /// @param rootPath fakefs root directory path (containing data/ and meta.db)
 /// @return 0 on success, negative error code on failure
