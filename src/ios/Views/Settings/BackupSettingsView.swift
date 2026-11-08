@@ -561,12 +561,20 @@ struct BackupSettingsView: View {
         }
         .sheet(isPresented: $showShare) {
             if let shareURL {
-                BackupShareSheet(url: shareURL)
+                if AppProxyNetwork.strictEnabled {
+                    Text(SystemProxyBoundary.message).padding()
+                } else {
+                    BackupShareSheet(url: shareURL)
+                }
             }
         }
         .sheet(isPresented: $showSaveToFiles) {
             if let shareURL {
-                BackupDocumentExportPicker(url: shareURL)
+                if AppProxyNetwork.strictEnabled {
+                    Text(SystemProxyBoundary.message).padding()
+                } else {
+                    BackupDocumentExportPicker(url: shareURL)
+                }
             }
         }
         // [review S14] The `pendingPackage` sheet used to live here. It is now
