@@ -29,6 +29,14 @@ enum {
     NOFF_EXIT_NOT_AVAILABLE = 4,
 };
 
+// System-hosted services cannot be forced through the app proxy. Recheck
+// immediately before delegation after waits. Already delegated jobs cannot be recalled.
+BOOL noff_strict_proxy_enabled(void);
+NSString *noff_strict_proxy_message(void);
+NSError *noff_strict_proxy_error(void);
+BOOL noff_reject_strict_proxy(NSString *tool, NSString *action,
+                              int stdout_fd, BOOL compact, BOOL quiet);
+
 // ── Argument helpers ──
 
 /// Find the value following a named argument (e.g. --start <value>).
