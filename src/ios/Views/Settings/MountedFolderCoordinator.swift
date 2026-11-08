@@ -193,6 +193,7 @@ enum MountedFolderCoordinator {
     /// through background queues; if a future caller needs main-thread safety
     /// they should hop to a background queue first.
     static func ensureDownloaded(_ url: URL) throws {
+        try SystemProxyBoundary.requireLocalFileAccess(url)
         let keys: Set<URLResourceKey> = [
             .isUbiquitousItemKey,
             .ubiquitousItemDownloadingStatusKey,
@@ -201,6 +202,7 @@ enum MountedFolderCoordinator {
               values.isUbiquitousItem == true else { return }
         if values.ubiquitousItemDownloadingStatus == .current { return }
 
+        try SystemProxyBoundary.requireAllowed("iCloud download")
         try FileManager.default.startDownloadingUbiquitousItem(at: url)
 
         // Never block the main thread waiting for iCloud — fire the download
@@ -247,6 +249,7 @@ enum MountedFolderCoordinator {
 
     /// Delete an item, using NSFileCoordinator if the path is inside a mount.
     static func remove(at url: URL) throws {
+        try SystemProxyBoundary.requireLocalFileAccess(url)
         try requireWritable(url)
         if isUnderMount(url) {
             var coordError: NSError?
@@ -266,6 +269,8 @@ enum MountedFolderCoordinator {
 
     /// Move an item, coordinating both src and dst when either is under a mount.
     static func move(from src: URL, to dst: URL) throws {
+        try SystemProxyBoundary.requireLocalFileAccess(src)
+        try SystemProxyBoundary.requireLocalFileAccess(dst)
         // A move both removes the src and creates at dst, so both must be
         // writable if they live under a mount.
         try requireWritable(src)
@@ -293,6 +298,8 @@ enum MountedFolderCoordinator {
 
     /// Copy an item, coordinating both src and dst when either is under a mount.
     static func copy(from src: URL, to dst: URL) throws {
+        try SystemProxyBoundary.requireLocalFileAccess(src)
+        try SystemProxyBoundary.requireLocalFileAccess(dst)
         // Reading from a read-only mount is fine; writing to one is not.
         try requireWritable(dst)
         let srcMounted = isUnderMount(src)
@@ -321,6 +328,7 @@ enum MountedFolderCoordinator {
 
     /// Write `data` to `url`, coordinating if the target is under a mount.
     static func write(_ data: Data, to url: URL) throws {
+        try SystemProxyBoundary.requireLocalFileAccess(url)
         try requireWritable(url)
         if isUnderMount(url) {
             var coordError: NSError?
@@ -340,6 +348,7 @@ enum MountedFolderCoordinator {
 
     /// Read `Data` from `url`, ensuring iCloud download + coordinating if under a mount.
     static func read(at url: URL) throws -> Data {
+        try SystemProxyBoundary.requireLocalFileAccess(url)
         if isUnderMount(url) {
             try ensureDownloaded(url)
             var coordError: NSError?
