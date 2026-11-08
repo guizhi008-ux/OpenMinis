@@ -1,0 +1,43 @@
+--- a/fs/sock.c
++++ b/fs/sock.c
+@@ -18,0 +19,20 @@
++
++// App-only guest socket transport. Function-like macros affect calls only;
++// struct fd members and all native/Go sockets keep their original ABI.
++#include "fs/ish_proxy.h"
++#define socket(...) ish_proxy_socket(__VA_ARGS__)
++#define connect(...) ish_proxy_connect(__VA_ARGS__)
++#define sendto(...) ish_proxy_sendto(__VA_ARGS__)
++#define recvfrom(...) ish_proxy_recvfrom(__VA_ARGS__)
++#define sendmsg(...) ish_proxy_sendmsg(__VA_ARGS__)
++#define recvmsg(...) ish_proxy_recvmsg(__VA_ARGS__)
++#define getsockopt(...) ish_proxy_getsockopt(__VA_ARGS__)
++#define setsockopt(...) ish_proxy_setsockopt(__VA_ARGS__)
++#define getsockname(...) ish_proxy_getsockname(__VA_ARGS__)
++#define getpeername(...) ish_proxy_getpeername(__VA_ARGS__)
++#define bind(...) ish_proxy_bind(__VA_ARGS__)
++#define listen(...) ish_proxy_listen(__VA_ARGS__)
++#define accept(...) ish_proxy_accept(__VA_ARGS__)
++#define read(...) ish_proxy_read(__VA_ARGS__)
++#define write(...) ish_proxy_write(__VA_ARGS__)
++#define close(...) ish_proxy_close(__VA_ARGS__)
+@@ -232,0 +253,9 @@
++static bool sock_proxy_interrupted(void) {
++    if (current->sighand == NULL)
++        return false;
++    lock(&current->sighand->lock);
++    bool pending = !!(current->pending & ~current->blocked);
++    unlock(&current->sighand->lock);
++    return pending;
++}
++
+@@ -233,0 +263 @@
++    ish_proxy_set_interrupt_hook(sock_proxy_interrupted);
+@@ -1821 +1851,2 @@
+-    return realfs_close(fd);
++    int result = ish_proxy_close(fd->real_fd);
++    return result < 0 ? errno_map() : 0;
+--- a/meson.build
++++ b/meson.build
+@@ -1762,0 +1763 @@
++        'fs/ish_proxy.c',
