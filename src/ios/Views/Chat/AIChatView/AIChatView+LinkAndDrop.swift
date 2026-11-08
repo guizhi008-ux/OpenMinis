@@ -143,7 +143,7 @@ extension AIChatView {
                   let data = try? Data(contentsOf: fileURL) else { return nil }
             img = downsampleImageData(data, maxPixelSize: 2048)
         } else {
-            guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
+            guard let (data, _) = try? await AppProxyNetwork.shared.data(from: url) else { return nil }
             img = downsampleImageData(data, maxPixelSize: 2048)
         }
         if let img { NativeMediaImageCache.shared.set(img, for: cacheKey) }
