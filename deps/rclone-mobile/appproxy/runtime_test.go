@@ -28,7 +28,8 @@ func TestLifecycleAndInvalidConfig(t *testing.T) {
 	}
 }
 func TestCoreConstructsEveryImportedProtocol(t *testing.T) {
-	for _, link := range []string{"vmess://" + base64.RawStdEncoding.EncodeToString([]byte(`{"v":"2","add":"127.0.0.1","port":"443","id":"550e8400-e29b-41d4-a716-446655440000","net":"tcp","aid":"0","scy":"auto"}`)), "ss://YWVzLTEyOC1nY206cHc@127.0.0.1:8388", "vless://550e8400-e29b-41d4-a716-446655440000@127.0.0.1:443?security=tls&type=ws&path=%2Fx&sni=example.org", "trojan://pw@127.0.0.1:443"} {
+	pbk := realityKey()
+	for _, link := range []string{"vmess://" + base64.RawStdEncoding.EncodeToString([]byte(`{"v":"2","add":"127.0.0.1","port":"443","id":"550e8400-e29b-41d4-a716-446655440000","net":"tcp","aid":"0","scy":"auto"}`)), "ss://YWVzLTEyOC1nY206cHc@127.0.0.1:8388", "vless://550e8400-e29b-41d4-a716-446655440000@127.0.0.1:443?security=tls&type=ws&path=%2Fx&sni=example.org", "vless://550e8400-e29b-41d4-a716-446655440000@127.0.0.1:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.amazon.com&fp=chrome&pbk=" + pbk + "&sid=ab12", "trojan://pw@127.0.0.1:443", "trojan://pw@127.0.0.1:443?security=reality&sni=www.amazon.com&pbk=" + pbk} {
 		r, e := Import(link)
 		if e != nil || len(r.Nodes) != 1 {
 			t.Fatal("import failed")
@@ -62,6 +63,8 @@ func TestConfigureRejectsNodesOutsideImportSchema(t *testing.T) {
 		{"type": "trojan", "server": "127.0.0.1", "server_port": 443, "password": "secret"},
 		{"type": "shadowsocks", "server": "127.0.0.1", "server_port": 443, "method": "none", "password": "secret"},
 		{"type": "vless", "server": "127.0.0.1", "server_port": 443, "uuid": "550e8400-e29b-41d4-a716-446655440000", "flow": "xtls-rprx-vision"},
+		{"type": "vless", "server": "127.0.0.1", "server_port": 443, "uuid": "550e8400-e29b-41d4-a716-446655440000", "tls": map[string]any{"enabled": true, "reality": map[string]any{"enabled": true, "public_key": realityKey()}}},
+		{"type": "vmess", "server": "127.0.0.1", "server_port": 443, "uuid": "550e8400-e29b-41d4-a716-446655440000", "alter_id": 0, "security": "auto", "tls": map[string]any{"enabled": true, "utls": map[string]any{"enabled": true, "fingerprint": "chrome"}, "reality": map[string]any{"enabled": true, "public_key": realityKey()}}},
 	} {
 		kind := outbound["type"].(string)
 		if kind == "shadowsocks" {
