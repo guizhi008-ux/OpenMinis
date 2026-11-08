@@ -22,10 +22,12 @@
 #                      no Local Network permission prompt (NAT traversal then
 #                      relies on STUN + DERP)
 # Do NOT add ts_omit_acme: tsnet does not compile without it.
+# with_utls is required: sing-box refuses to start Reality outbounds in a
+# build without uTLS. Do not remove it.
 # Override with GO_TAGS="" (nothing omitted) or your own comma-separated list.
 set -euo pipefail
 
-GO_TAGS="${GO_TAGS-ts_omit_logtail,ts_omit_portmapper}"
+GO_TAGS="${GO_TAGS-ts_omit_logtail,ts_omit_portmapper,with_utls}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/deps/rclone-mobile"
@@ -36,6 +38,10 @@ command -v go >/dev/null || { echo "error: go toolchain not found" >&2; exit 1; 
 
 mkdir -p "$BUILD" "$OUT"
 cd "$SRC"
+
+# A hash-locked overlay intercepts every rclone fshttp dial, including SMB.
+OVERLAY="$(python3 "$ROOT/scripts/rclone_proxy_overlay.py" --output "$BUILD/proxy-overlay")"
+export GOFLAGS="${GOFLAGS:-} \"-modfile=$BUILD/proxy-overlay/go.mod\" \"-overlay=$OVERLAY\""
 
 build_slice() {
   local sdk="$1" minflag="$2" tag="$3"
