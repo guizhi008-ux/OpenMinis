@@ -49,7 +49,20 @@ final class SyncCore {
     }
 
     static let shared = SyncCore()
-    private init() {}
+    private var proxyObserver: NSObjectProtocol?
+    private init() {
+        proxyObserver = NotificationCenter.default.addObserver(forName: .appProxyDidChange, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in await self?.proxyModeChanged() }
+        }
+    }
+
+    private func proxyModeChanged() async {
+        if AppProxyNetwork.strictEnabled {
+            await stop()
+        } else if SyncV2Bootstrap.isEnabled {
+            await SyncV2Bootstrap.startIfEnabled()
+        }
+    }
 
     // MARK: - Configuration
 
@@ -231,6 +244,7 @@ final class SyncCore {
 
     /// Boot all registered transports. Idempotent.
     func start() async {
+        guard !AppProxyNetwork.strictEnabled else { return }
         guard !isRunning else { return }
         logger.info("[SyncCore] start STEP=enter transports=\(self.transports.count)")
         // Hook each transport's observe(handler:) so inbound batches
@@ -265,6 +279,10 @@ final class SyncCore {
             } catch {
                 logger.error("[SyncCore] transport \(t.name) start failed: \(error.localizedDescription)")
             }
+        }
+        guard !AppProxyNetwork.strictEnabled else {
+            await stop()
+            return
         }
         isRunning = true
         logger.info("[SyncCore] start STEP=exit isRunning=true")
