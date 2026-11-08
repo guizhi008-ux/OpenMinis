@@ -26,7 +26,13 @@ func xmapConnect(t *testing.T, x *XMap, dir, dst string) net.Conn {
 	lport := c.LocalAddr().(*net.TCPAddr).Port
 	host, port, _ := net.SplitHostPort(dst)
 	// What proot writes once connect() returned.
-	os.WriteFile(filepath.Join(dir, fmt.Sprint(lport)), []byte(fmt.Sprintf("dst %s %s\nid x7\n", host, port)), 0o600)
+	path := filepath.Join(dir, fmt.Sprint(lport))
+	if err := os.WriteFile(path+".tmp", []byte(fmt.Sprintf("dst %s %s\nid x7\n", host, port)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(path+".tmp", path); err != nil {
+		t.Fatal(err)
+	}
 	return c
 }
 
@@ -64,8 +70,8 @@ func TestXMapRoutesTheShellsTailnetAndDirectConnections(t *testing.T) {
 		t.Fatalf("tailnet: got %q", got)
 	}
 	c.Close()
-	if len(ts.dials) != 1 || ts.dials[0] != "100.64.0.42:22" {
-		t.Fatalf("tailnet dials %v", ts.dials)
+	if dials := ts.dialed(); len(dials) != 1 || dials[0] != "100.64.0.42:22" {
+		t.Fatalf("tailnet dials %v", dials)
 	}
 	// Anything else the policy calls direct goes direct.
 	c = xmapConnect(t, x, dir, "93.184.216.34:443")
@@ -135,7 +141,7 @@ func TestXMapStartIsIdempotentAndStopSweeps(t *testing.T) {
 func TestParseXMapFile(t *testing.T) {
 	for in, want := range map[string]string{
 		"dst 100.64.0.42 22\nid x1f\n": "100.64.0.42:22",
-		"dst fd7a:115c:a1e0::1 443\n":    "[fd7a:115c:a1e0::1]:443",
+		"dst fd7a:115c:a1e0::1 443\n":  "[fd7a:115c:a1e0::1]:443",
 	} {
 		got, err := parseXMapFile(in)
 		if err != nil || got.addr != want || got.dns {
