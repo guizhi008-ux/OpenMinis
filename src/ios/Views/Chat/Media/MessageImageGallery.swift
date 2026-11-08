@@ -61,7 +61,7 @@ enum ImageExport {
             guard let data = try? Data(contentsOf: url) else { return nil }
             return make(data: data, name: url.lastPathComponent)
         case .remote(let url):
-            guard let (data, response) = try? await URLSession.shared.data(from: url) else { return nil }
+            guard let (data, response) = try? await AppProxyNetwork.shared.data(from: url) else { return nil }
             let name = response.suggestedFilename ?? url.lastPathComponent
             return make(data: data, name: name)
         case .markdown(let raw):
