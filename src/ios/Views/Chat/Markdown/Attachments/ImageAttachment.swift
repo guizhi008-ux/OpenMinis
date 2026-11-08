@@ -478,14 +478,14 @@ final class ImageAttachment: NSTextAttachment {
                 }
             } else if let url = URL(string: src), url.scheme == "http" || url.scheme == "https" {
                 imgLogger.info("[MinisImage][Load] fetching HTTP(S) url=\(src)")
-                if let data = try? Data(contentsOf: url) {
+                if let (data, _) = try? await AppProxyNetwork.shared.data(from: url) {
                     imgLogger.info("[MinisImage][Load] HTTP fetched \(data.count) bytes src=\(src)")
                     img = downsampleImageData(data, maxPixelSize: displayTargetPixels(for: data, screenScale: screenScale))
                 } else {
                     imgLogger.warning("[MinisImage][Load] HTTP fetch FAILED src=\(src)")
                     img = nil
                 }
-            } else if let url = URL(string: src) {
+            } else if let url = URL(string: src), url.isFileURL {
                 // file URL or relative
                 imgLogger.info("[MinisImage][Load] trying file/relative URL scheme=\(url.scheme ?? "nil") path=\(url.path)")
                 fileURL = url
