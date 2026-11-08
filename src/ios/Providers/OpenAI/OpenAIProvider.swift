@@ -36,15 +36,15 @@ private func resolvedAPIBase(_ base: String, appendV1: Bool) -> String {
 /// they benefit from connection reuse and never sit idle holding a stream
 /// open. The SSE streaming path deliberately does NOT use this session — see
 /// `makeStreamingSession()`.
-private let streamingSession: URLSession = {
+private var streamingSession: URLSession {
     let config = URLSessionConfiguration.default
     config.timeoutIntervalForRequest = 600  // 10 minutes
-    let session = URLSession(configuration: config)
+    let session = AppProxyNetwork.cachedSession(key: "openai.response", configuration: config)
     // Evict this session's pooled (possibly stale) connections on network
     // transitions — see LLMSessionRegistry / Android #740.
     LLMSessionRegistry.shared.register(session)
     return session
-}()
+}
 
 /// [T-ios-stream-connection-reuse] A FRESH session for one SSE stream, torn
 /// down when that stream ends.
@@ -80,7 +80,7 @@ private func makeStreamingSession() -> URLSession {
     config.timeoutIntervalForRequest = 600  // 10 minutes — matches the shared session
     // One stream per session, so there is no second connection to pool.
     config.httpMaximumConnectionsPerHost = 1
-    return URLSession(configuration: config)
+    return AppProxyNetwork.makeSession(configuration: config)
 }
 
 /// LLMProvider implementation for OpenAI models.
@@ -649,7 +649,7 @@ final class OpenAIProvider: LLMProvider {
             stream: false
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await AppProxyNetwork.shared.data(for: request)
         let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
 
         guard (200..<300).contains(statusCode) else {
