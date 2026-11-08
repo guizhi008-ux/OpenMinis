@@ -1,0 +1,117 @@
+name: build-ios-unsigned
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 350
+    steps:
+      - name: Checkout OpenMinis fork (with submodules)
+        uses: actions/checkout@v4
+        with:
+          repository: guizhi008-ux/OpenMinis
+          ref: proxy-v2
+          submodules: recursive
+
+      - name: Show available Xcode versions
+        run: |
+          ls /Applications | grep -i xcode || true
+          xcodebuild -version || true
+
+      - name: Select newest Xcode 26.x if present
+        run: |
+          APP=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          if [ -n "$APP" ]; then sudo xcode-select -s "$APP"; fi
+          xcodebuild -version
+          xcodebuild -downloadComponent MetalToolchain || true
+
+      - name: Install build tools
+        run: |
+          brew install ninja llvm lld libarchive pkg-config meson
+          meson --version
+
+      - name: Set up Go 1.25 (rclone-mobile go.mod pins go 1.25.5)
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Show Go version
+        run: go version
+
+      - name: "Build native deps (order matters: LAME -> FFmpeg)"
+        run: |
+          ./deps/build_lame.sh
+          ./deps/build_ffmpeg.sh
+          ./deps/build_ish.sh
+          ./deps/prepare_alpine_rootfs.sh
+          ./deps/build_rclone_ios.sh
+
+
+      - name: Prepare provider customization config
+        run: |
+          cp src/ios/Configs/ProviderCustomization.xcconfig.example \
+             src/ios/Configs/ProviderCustomization.xcconfig
+          ls -l src/ios/Configs/
+
+      - name: Build app (unsigned)
+        run: |
+          xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DD \
+            CODE_SIGNING_ALLOWED=NO build
+
+      - name: Upload raw app (pre-injection backup)
+        run: |
+          APP=$(find build/DD -name "*.app" -maxdepth 6 | head -1)
+          ditto -c -k --keepParent "$APP" Minis-raw-app.zip
+          ls -lh Minis-raw-app.zip
+
+      - name: Upload raw artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Minis-raw-app
+          path: Minis-raw-app.zip
+          retention-days: 7
+
+      - name: Inject entitlements (self-signed, for re-sign preservation)
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          APP=$(find build/DD -name "*.app" -maxdepth 6 | head -1)
+          echo "App: $APP"
+          openssl req -x509 -newkey rsa:2048 -keyout /tmp/k.pem -out /tmp/c.pem -days 365 -nodes -subj "/CN=MinisCI" 2>/dev/null
+          openssl pkcs12 -export -legacy -out /tmp/id.p12 -inkey /tmp/k.pem -in /tmp/c.pem -passout pass:ci -name MinisCI
+          security create-keychain -p ci /tmp/build.keychain
+          security default-keychain -s /tmp/build.keychain
+          security unlock-keychain -p ci /tmp/build.keychain
+          security set-keychain-settings -lut 3600 /tmp/build.keychain
+          security import /tmp/id.p12 -k /tmp/build.keychain -P ci -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci /tmp/build.keychain > /dev/null
+          ID=$(security find-identity /tmp/build.keychain | grep -oE "[0-9A-F]{40}" | head -1)
+          echo "Identity: $ID"
+          find "$APP/Frameworks" -maxdepth 1 -name "*.framework" | while read -r fw; do
+            codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none "$fw"
+          done
+          codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none --entitlements src/ios/AgentWidget/AgentWidget.entitlements "$APP/PlugIns/AgentWidgetExtension.appex"
+          codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none --entitlements src/ios/FileProvider/FileProvider.entitlements "$APP/PlugIns/MinisFileProvider.appex"
+          codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none --entitlements src/ios/ShareExtension/ShareExtension.entitlements "$APP/PlugIns/MinisShare.appex"
+          codesign --force --sign "$ID" --keychain /tmp/build.keychain --timestamp=none --entitlements src/ios/Minis.entitlements "$APP"
+          echo "--- verify ---"
+          codesign -d --entitlements - "$APP" 2>/dev/null | head -30 || true
+
+      - name: Package .app artifact
+        run: |
+          APP=$(find build/DD -name "*.app" -maxdepth 6 | head -1)
+          echo "Found app: $APP"
+          ditto -c -k --keepParent "$APP" Minis-unsigned-app.zip
+          ls -lh Minis-unsigned-app.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Minis-unsigned-app
+          path: Minis-unsigned-app.zip
+          retention-days: 7
