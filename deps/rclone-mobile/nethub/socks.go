@@ -49,11 +49,14 @@ func (h *Hub) serve(ln net.Listener) {
 			h.listenerDied(ln, err)
 			return
 		}
-		go h.handle(c)
+		if h.trackClient(c) {
+			go h.handle(c)
+		}
 	}
 }
 
 func (h *Hub) handle(c net.Conn) {
+	defer h.untrackClient(c)
 	defer c.Close()
 	id := nextConnID()
 	c.SetDeadline(time.Now().Add(handshakeLimit))
