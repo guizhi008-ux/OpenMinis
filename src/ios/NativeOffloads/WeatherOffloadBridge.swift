@@ -18,11 +18,11 @@ import CoreLocation
         longitude lng: Double,
         completion: @escaping (NSDictionary?, Error?) -> Void
     ) {
-        let location = CLLocation(latitude: lat, longitude: lng)
-        let service = WeatherService.shared
-
         Task {
             do {
+                try SystemProxyBoundary.requireAllowed("WeatherKit")
+                let location = CLLocation(latitude: lat, longitude: lng)
+                let service = WeatherService.shared
                 let weather = try await service.weather(for: location)
                 let result = NSMutableDictionary()
 
