@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: guizhi008-ux/OpenMinis
-          ref: main
+          ref: proxy-v2
           submodules: recursive
 
       - name: Show available Xcode versions
@@ -47,7 +47,7 @@ jobs:
           ./deps/build_ffmpeg.sh
           ./deps/build_ish.sh
           ./deps/prepare_alpine_rootfs.sh
-          (cd deps/rclone-mobile && go get github.com/xtls/xray-core@v1.251202.0 && go mod tidy)
+          (cd deps/rclone-mobile && go mod download)
           ./deps/build_rclone_ios.sh
 
       - name: Fetch geo data for proxy routing
