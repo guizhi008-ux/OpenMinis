@@ -243,6 +243,10 @@ struct CopilotDeviceLoginSheet: View {
     }
 
     private func start() {
+        guard !AppProxyNetwork.strictEnabled else {
+            phase = .failed(SystemProxyBoundary.message)
+            return
+        }
         // [T-copilot-consent-remembered] Reaching here means the notice was
         // either accepted just now or accepted previously; either way the
         // standing decision is recorded, so the next sign-in goes straight to
@@ -300,6 +304,10 @@ struct CopilotDeviceLoginSheet: View {
     /// In-app Safari, matching the other OAuth providers rather than jumping
     /// out to system Safari.
     private func presentSafari(_ url: URL) {
+        guard !AppProxyNetwork.strictEnabled else {
+            phase = .failed(SystemProxyBoundary.message)
+            return
+        }
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first,
               let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
