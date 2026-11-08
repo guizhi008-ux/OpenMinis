@@ -422,6 +422,13 @@ func (h *Hub) dialUDPRoute(id, tag, dst, host string) (net.Conn, Decision, int64
 		d = Decision{Kind: "direct", Route: d.Route, Rule: "loopback"}
 	}
 	if d.Kind == "proxy" {
+		if h.strict() {
+			ctx, cancel := context.WithTimeout(context.Background(), connectDeadline)
+			defer cancel()
+			started := time.Now()
+			conn, err := dialSOCKSUDP(ctx, &h.dialer, *d.Upstream, dst)
+			return conn, d, time.Since(started).Milliseconds(), stageErr("udp-proxy", err)
+		}
 		// An upstream proxy cannot carry UDP (Q2): only tailnet destinations
 		// are relayed, the rest leaves directly, said so in the log.
 		d = Decision{Kind: "direct", Route: d.Route, Rule: "udp-direct(proxy-route)"}
@@ -433,7 +440,9 @@ func (h *Hub) dialUDPRoute(id, tag, dst, host string) (net.Conn, Decision, int64
 	t0 := time.Now()
 	var conn net.Conn
 	var err error
-	if d.Kind == "tailscale" && h.exitOffline(d) {
+	if d.Kind == "reject" {
+		err = stageErr("policy", errors.New("strict proxy route unavailable"))
+	} else if d.Kind == "tailscale" && h.exitOffline(d) {
 		err = stageErr("udp-tailnet", errExitOffline)
 	} else if d.Kind == "tailscale" {
 		conn, err = h.ts.Dial(ctx, "udp", dst)
