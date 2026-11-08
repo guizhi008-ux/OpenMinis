@@ -154,6 +154,29 @@ final class MountedFoldersManager {
     private init() {
         migrateStoreFileIfNeeded()
         load()
+        proxyObserver = NotificationCenter.default.addObserver(forName: .appProxyDidChange, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.proxyModeChanged() }
+        }
+    }
+
+    private var proxyObserver: NSObjectProtocol?
+
+    private func proxyModeChanged() {
+        if AppProxyNetwork.strictEnabled {
+            activationPass?.cancel()
+            activationPass = nil
+            didCompleteActivationPass = false
+            for entry in entries {
+                activeURLs[entry.id]?.stopAccessingSecurityScopedResource()
+                removeMountSymlink(name: entry.name)
+                activationStates[entry.id] = .failed(SystemProxyBoundary.message)
+            }
+            activeURLs.removeAll()
+            canonicalMountPaths.removeAll()
+            pushExternalMountSnapshot()
+        } else {
+            activateAll()
+        }
     }
 
     // MARK: - Persistence
@@ -274,6 +297,7 @@ final class MountedFoldersManager {
     /// read-only folder (even if the source itself is writable).
     @discardableResult
     func add(pickedURL: URL, customName: String, userAllowWrite: Bool) throws -> MountedFolderEntry {
+        try SystemProxyBoundary.requireAllowed("External folders")
         let name = customName.trimmingCharacters(in: .whitespaces)
         guard MountedFolderEntry.isValidMountName(name) else { throw AddError.invalidName }
         guard isNameAvailable(name) else { throw AddError.nameTaken }
@@ -341,6 +365,7 @@ final class MountedFoldersManager {
     /// permissions on the source folder in another app). Updates `isWritable`
     /// and re-pushes the snapshot so iSH rebinds with the new mode.
     func refreshWritability(id: UUID) {
+        guard !AppProxyNetwork.strictEnabled else { return }
         guard let idx = entries.firstIndex(where: { $0.id == id }),
               let url = activeURLs[id] else { return }
         let writable = Self.probeWritable(at: url)
@@ -411,6 +436,7 @@ final class MountedFoldersManager {
     /// state. A soft timeout ensures the main actor is never starved even if
     /// the background task itself hangs forever waiting on XPC.
     func activateAll() {
+        guard !AppProxyNetwork.strictEnabled else { return }
         let snapshot = entries
         mountLog.info("activateAll: \(snapshot.count) entries to resolve")
         guard !snapshot.isEmpty else {
@@ -456,6 +482,7 @@ final class MountedFoldersManager {
     /// that want a hard ceiling regardless of mount count should use
     /// `ensureActivated(timeout:)`.
     func ensureActivated() async {
+        guard !AppProxyNetwork.strictEnabled else { return }
         if didCompleteActivationPass { return }
         if let existing = activationPass {
             await existing.value
@@ -550,6 +577,7 @@ final class MountedFoldersManager {
     /// `Task.sleep` — the `Result` lives entirely inside one task, so there
     /// is no cross-thread shared mutable state.
     private static func resolveAndCommit(entry: MountedFolderEntry) async {
+        guard !AppProxyNetwork.strictEnabled else { return }
         let idPrefix = String(entry.id.uuidString.prefix(8))
         let started = Date()
         mountLog.info("resolveAndCommit '\(entry.name)' [\(idPrefix)] start — bookmark=\(entry.bookmark.count)B")
@@ -632,6 +660,7 @@ final class MountedFoldersManager {
     /// Main-actor tail of `resolveAndCommit`: start the security scope, record
     /// state, and optionally refresh a stale bookmark.
     private func commitResolved(entry: MountedFolderEntry, url: URL, stale: Bool) {
+        guard !AppProxyNetwork.strictEnabled else { return }
         let idPrefix = String(entry.id.uuidString.prefix(8))
         guard url.startAccessingSecurityScopedResource() else {
             activationStates[entry.id] = .permissionDenied
@@ -731,9 +760,11 @@ final class MountedFoldersManager {
     /// Returns true as soon as stat() succeeds; false if the whole budget
     /// elapses. Never blocks the caller longer than the deadline.
     private static func materialize(url: URL, idPrefix: String, deadlineNanos: UInt64) async -> Bool {
+        guard !AppProxyNetwork.strictEnabled else { return false }
         let deadline = DispatchTime.now().uptimeNanoseconds + deadlineNanos
 
         func reachable() -> Bool {
+            guard !AppProxyNetwork.strictEnabled else { return false }
             var st = stat()
             return stat(url.path, &st) == 0
         }
@@ -742,6 +773,7 @@ final class MountedFoldersManager {
         //    providers (iCloud Drive etc.). Run off the main thread.
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             DispatchQueue.global(qos: .userInitiated).async {
+                guard !AppProxyNetwork.strictEnabled else { cont.resume(); return }
                 var coordErr: NSError?
                 NSFileCoordinator().coordinate(readingItemAt: url,
                                                options: [.withoutChanges],
@@ -761,7 +793,8 @@ final class MountedFoldersManager {
         //    owns this URL and nudge it to re-stage. Third-party providers
         //    (e.g. "Shu Files") often need this explicit poke after relaunch
         //    because they don't keep placeholders alive across app launches.
-        if let domain = await Self.domainForURL(url) {
+        guard !AppProxyNetwork.strictEnabled else { return false }
+        if let domain = await Self.domainForURL(url), !AppProxyNetwork.strictEnabled {
             if let mgr = NSFileProviderManager(for: domain) {
                 await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
                     mgr.signalEnumerator(for: .rootContainer) { error in
@@ -798,6 +831,7 @@ final class MountedFoldersManager {
     /// identifier appears as a path component. Returns nil for non-FileProvider
     /// URLs (e.g. plain on-device folders) or when enumeration fails.
     private static func domainForURL(_ url: URL) async -> NSFileProviderDomain? {
+        guard !AppProxyNetwork.strictEnabled else { return nil }
         let domains: [NSFileProviderDomain] = await withCheckedContinuation { cont in
             NSFileProviderManager.getDomainsWithCompletionHandler { domains, error in
                 if let error {
@@ -888,6 +922,7 @@ final class MountedFoldersManager {
     /// Re-activate a single entry (used on add and manual reauth).
     @discardableResult
     func activate(entry: MountedFolderEntry) -> MountActivationState {
+        guard !AppProxyNetwork.strictEnabled else { return .failed(SystemProxyBoundary.message) }
         // If already active with a URL, skip.
         if let existing = activeURLs[entry.id] {
             let state = MountActivationState.active(resolvedURL: existing)
