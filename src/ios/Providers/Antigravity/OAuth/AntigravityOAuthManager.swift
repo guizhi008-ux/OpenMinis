@@ -80,6 +80,7 @@ final class AntigravityOAuthManager: NSObject, ObservableObject {
     }
 
     func login(instanceId: String) async throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         logger.info("=== Antigravity OAuth login started (instance: \(instanceId)) ===")
         callbackServer?.stop()
         callbackServer = nil
@@ -118,7 +119,7 @@ final class AntigravityOAuthManager: NSObject, ObservableObject {
         logger.info("Authorization URL: \(authorizationURL.absoluteString)")
 
         // 3. Open in-app Safari
-        presentSafariViewController(url: authorizationURL)
+        try presentSafariViewController(url: authorizationURL)
 
         // 4. Wait for callback
         let result = try await server.waitForCallback(timeout: 300)
@@ -288,7 +289,7 @@ final class AntigravityOAuthManager: NSObject, ObservableObject {
 
         logger.info("\(context) POST \(self.tokenURL)")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await AppProxyNetwork.shared.data(for: request)
         let http = response as? HTTPURLResponse
         let statusCode = http?.statusCode ?? -1
         let responseBody = String(data: data, encoding: .utf8) ?? "<binary>"
@@ -334,7 +335,7 @@ final class AntigravityOAuthManager: NSObject, ObservableObject {
         var request = URLRequest(url: URL(string: userInfoURL)!)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, _) = try await AppProxyNetwork.shared.data(for: request)
         let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         return json?["email"] as? String
     }
@@ -379,7 +380,7 @@ final class AntigravityOAuthManager: NSObject, ObservableObject {
         let body: [String: Any] = ["metadata": setupClientMetadata]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await AppProxyNetwork.shared.data(for: request)
         let http = response as? HTTPURLResponse
         let statusCode = http?.statusCode ?? -1
         let responseBody = String(data: data, encoding: .utf8) ?? ""
@@ -413,7 +414,7 @@ final class AntigravityOAuthManager: NSObject, ObservableObject {
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: onboardBody)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await AppProxyNetwork.shared.data(for: request)
         let http = response as? HTTPURLResponse
         let statusCode = http?.statusCode ?? -1
 
@@ -448,7 +449,7 @@ final class AntigravityOAuthManager: NSObject, ObservableObject {
             var request = URLRequest(url: URL(string: urlString)!)
             applySetupHeaders(&request, token: token)
 
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await AppProxyNetwork.shared.data(for: request)
             let http = response as? HTTPURLResponse
             guard (200..<300).contains(http?.statusCode ?? -1) else { continue }
 
@@ -475,7 +476,8 @@ final class AntigravityOAuthManager: NSObject, ObservableObject {
 
     // MARK: - In-App Safari
 
-    private func presentSafariViewController(url: URL) {
+    private func presentSafariViewController(url: URL) throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first,
               let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
