@@ -137,6 +137,7 @@ enum SyncV2Bootstrap {
     /// Idempotent — running twice is harmless.
     @MainActor
     static func startIfEnabled() async {
+        guard !AppProxyNetwork.strictEnabled else { return }
         guard isEnabled else {
             logger.debug("[SyncCore] v2 disabled (flag off) — staying on v1")
             return
