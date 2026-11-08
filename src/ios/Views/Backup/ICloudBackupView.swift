@@ -6,8 +6,17 @@ struct ICloudBackupView: View {
     @State private var showError: String?
     @State private var showRestoreConfirm: ICloudBackupManager.BackupEntry?
 
+    @State private var proxyPaused = AppProxyNetwork.strictEnabled
+
     var body: some View {
         List {
+            if proxyPaused {
+                Section {
+                    Text(SystemProxyBoundary.message)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
             // MARK: - Status & Backup Actions
             Section {
                 if !manager.isICloudAvailable {
@@ -113,6 +122,9 @@ struct ICloudBackupView: View {
             } footer: {
                 Text("Backups are stored in iCloud Drive and sync across your devices. Restoring will replace your current local data.")
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appProxyDidChange)) { _ in
+            proxyPaused = AppProxyNetwork.strictEnabled
         }
         .navigationTitle("iCloud Backup")
         .navigationBarTitleDisplayMode(.inline)
