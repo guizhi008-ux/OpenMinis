@@ -29,6 +29,11 @@ enum ExternalFileImporter {
             return false
         }
 
+        do { try SystemProxyBoundary.requireLocalFileAccess(url) }
+        catch {
+            importLog.error("[Share] import paused: \(error.localizedDescription)")
+            return false
+        }
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
