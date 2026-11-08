@@ -4,6 +4,38 @@ import os.log
 
 private let logger = AppLogger(category: "EnvVarStore")
 
+/// iOS owns these services and does not expose the app proxy to them.
+/// Guard at launch and again after awaits before delegating additional work.
+enum SystemProxyBoundary {
+    static let message = "Strict proxy mode pauses iCloud sync, external file providers, system-hosted sign-in, Apple weather/maps/location services, and cloud speech because iOS cannot route these services through the app proxy. Supported on-device speech remains available. Your saved settings are preserved."
+
+    /// Checking paths is lexical: resolving symlinks on provider URLs may itself launch XPC.
+    /// Explicit mounts are removed on transition; previously acquired handles cannot be recalled.
+    static func requireLocalFileAccess(_ url: URL) throws {
+        guard AppProxyNetwork.strictEnabled else { return }
+        let path = url.standardizedFileURL.path
+        var roots = [NSHomeDirectory(), FileManager.default.temporaryDirectory.path]
+        if let group = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: SharedContainerStore.appGroupID) {
+            roots.append(group.appendingPathComponent("MinisFileProvider", isDirectory: true).path)
+        }
+        guard roots.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) else {
+            try requireAllowed("External file providers")
+            return
+        }
+        if path.contains("/minis/mounts/") || path.contains("/Mobile Documents/") {
+            try requireAllowed("External file providers")
+        }
+    }
+
+    static func requireAllowed(_ service: String) throws {
+        guard !AppProxyNetwork.strictEnabled else {
+            throw NSError(domain: "SystemProxyBoundary", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "\(service): \(message)"])
+        }
+    }
+}
+
 // MARK: - EnvVarEntry
 
 struct EnvVarEntry: Identifiable, Codable {
