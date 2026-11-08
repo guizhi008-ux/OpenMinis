@@ -163,12 +163,18 @@ enum FileToolIO {
     /// while the overall timeout still had time left, and that never looked
     /// at the download error, so a failing download read as a slow one.
     static func requestDownload(_ url: URL) throws {
+        #if canImport(UIKit)
+        try SystemProxyBoundary.requireLocalFileAccess(url)
+        #endif
         guard let v = cloudValues(url) else { return }   // not an iCloud item
         if let s = v.ubiquitousItemDownloadingStatus, s == .current || s == .downloaded { return }
         if let error = v.ubiquitousItemDownloadingError {
             throw IOError.downloadFailed(reason: describe(error))
         }
         do {
+            #if canImport(UIKit)
+            try SystemProxyBoundary.requireAllowed("iCloud download")
+            #endif
             try FileManager.default.startDownloadingUbiquitousItem(at: url)
         } catch {
             throw IOError.downloadFailed(reason: describe(error))
@@ -201,6 +207,9 @@ enum FileToolIO {
     /// Run `body` under a coordinated read of `url` when it is cloud-backed,
     /// or directly otherwise.
     private static func coordinatedRead<T>(_ url: URL, cancellation: Cancellation, _ body: (URL) throws -> T) throws -> T {
+        #if canImport(UIKit)
+        try SystemProxyBoundary.requireLocalFileAccess(url)
+        #endif
         guard isCloudBacked(url) else { return try body(url) }
         try requestDownload(url)
         let coordinator = NSFileCoordinator()
@@ -218,6 +227,9 @@ enum FileToolIO {
     /// Run `body` under a coordinated write of `url` when it is cloud-backed,
     /// or directly otherwise. `.forMerging` because callers read-modify-write.
     private static func coordinatedWrite<T>(_ url: URL, cancellation: Cancellation, _ body: (URL) throws -> T) throws -> T {
+        #if canImport(UIKit)
+        try SystemProxyBoundary.requireLocalFileAccess(url)
+        #endif
         guard isCloudBacked(url) || isCloudBacked(url.deletingLastPathComponent()) else { return try body(url) }
         if FileManager.default.fileExists(atPath: url.path) {
             try requestDownload(url)
@@ -244,6 +256,9 @@ enum FileToolIO {
     /// file_write: write or append `data`, creating the parent directory if
     /// it is missing (or `createDirs` asks for it).
     static func writeData(_ data: Data, to url: URL, append: Bool, createDirs: Bool, cancellation: Cancellation) throws {
+        #if canImport(UIKit)
+        try SystemProxyBoundary.requireLocalFileAccess(url)
+        #endif
         let fm = FileManager.default
         let parent = url.deletingLastPathComponent()
         if createDirs || !fm.fileExists(atPath: parent.path) {
@@ -275,6 +290,9 @@ enum FileToolIO {
         _ url: URL, path: String, oldString: String, newString: String, replaceAll: Bool,
         cancellation: Cancellation
     ) throws -> EditOutcome {
+        #if canImport(UIKit)
+        try SystemProxyBoundary.requireLocalFileAccess(url)
+        #endif
         if let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? Int,
            size > maxEditBytes {
             return .failed("Error: \(path) is \(size) bytes; file_edit handles files up to \(maxEditBytes) bytes. Use the shell (e.g. sed or a script) for larger files.")
