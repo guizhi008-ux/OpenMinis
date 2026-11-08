@@ -69,7 +69,20 @@ enum ClaudeCLIMimicry {
 /// auth headers before it hits the network.
 final class OAuthHTTPClient: HTTPClient {
 
-    private let underlying: URLSessionHTTPClientAdapter
+    private let proxySessionKey = UUID().uuidString
+    private let proxySessionConfiguration: URLSessionConfiguration
+    private let proxyAdapterLock = NSLock()
+    private var proxyAdapter: (generation: UInt64, adapter: URLSessionHTTPClientAdapter)?
+    private var underlying: URLSessionHTTPClientAdapter {
+        proxyAdapterLock.lock()
+        defer { proxyAdapterLock.unlock() }
+        let generation = AppProxyNetwork.sessionGeneration
+        if let current = proxyAdapter, current.generation == generation { return current.adapter }
+        let adapter = URLSessionHTTPClientAdapter(urlSession: AppProxyNetwork.cachedSession(
+            key: proxySessionKey, configuration: proxySessionConfiguration))
+        proxyAdapter = (generation, adapter)
+        return adapter
+    }
     private let registryId: String
 
     init(tokenProvider: @escaping @Sendable () async throws -> String, quotaInstanceId: String? = nil) {
@@ -85,11 +98,11 @@ final class OAuthHTTPClient: HTTPClient {
         config.protocolClasses = [OAuthURLProtocol.self]
         config.httpAdditionalHeaders = (config.httpAdditionalHeaders ?? [:]).merging(
             ["X-Minis-OAuth-UUID": rid]) { _, new in new }
-        let session = URLSession(configuration: config)
-        self.underlying = URLSessionHTTPClientAdapter(urlSession: session)
+        self.proxySessionConfiguration = config
     }
 
     deinit {
+        AppProxyNetwork.releaseCachedSession(key: proxySessionKey)
         TokenBoxRegistry.shared.deregister(id: registryId)
     }
 
@@ -613,7 +626,7 @@ let anthropicRequestIdleTimeout: TimeInterval = 600
 func makeInnerProtocolSession(delegate: URLSessionDataDelegate) -> URLSession {
     let config = URLSessionConfiguration.default
     config.timeoutIntervalForRequest = anthropicRequestIdleTimeout
-    return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+    return AppProxyNetwork.makeSession(configuration: config, delegate: delegate, delegateQueue: nil)
 }
 
 /// Intercepts outgoing requests that contain `x-api-key`, removes it,
@@ -1718,7 +1731,20 @@ private final class EagerStreamingURLProtocol: URLProtocol, URLSessionDataDelega
 /// HTTPClient wrapper that injects `eager_input_streaming` into tool definitions
 /// for the API key authentication path.
 final class EagerStreamingHTTPClient: HTTPClient {
-    private let underlying: URLSessionHTTPClientAdapter
+    private let proxySessionKey = UUID().uuidString
+    private let proxySessionConfiguration: URLSessionConfiguration
+    private let proxyAdapterLock = NSLock()
+    private var proxyAdapter: (generation: UInt64, adapter: URLSessionHTTPClientAdapter)?
+    private var underlying: URLSessionHTTPClientAdapter {
+        proxyAdapterLock.lock()
+        defer { proxyAdapterLock.unlock() }
+        let generation = AppProxyNetwork.sessionGeneration
+        if let current = proxyAdapter, current.generation == generation { return current.adapter }
+        let adapter = URLSessionHTTPClientAdapter(urlSession: AppProxyNetwork.cachedSession(
+            key: proxySessionKey, configuration: proxySessionConfiguration))
+        proxyAdapter = (generation, adapter)
+        return adapter
+    }
 
     /// - Parameter customUserAgent: when non-nil, overrides the default URLSession
     ///   `User-Agent` on every request through `httpAdditionalHeaders` (proxies that
@@ -1731,9 +1757,10 @@ final class EagerStreamingHTTPClient: HTTPClient {
             config.httpAdditionalHeaders = (config.httpAdditionalHeaders ?? [:]).merging(
                 ["User-Agent": ua]) { _, new in new }
         }
-        let session = URLSession(configuration: config)
-        self.underlying = URLSessionHTTPClientAdapter(urlSession: session)
+        self.proxySessionConfiguration = config
     }
+
+    deinit { AppProxyNetwork.releaseCachedSession(key: proxySessionKey) }
 
     func data(for request: HTTPRequest) async throws -> (Data, HTTPResponse) {
         try await underlying.data(for: request)
@@ -1747,7 +1774,20 @@ final class EagerStreamingHTTPClient: HTTPClient {
 /// HTTPClient that sends both `x-api-key` and `Authorization: Bearer` headers simultaneously.
 /// Used for manual OAuth tokens on Anthropic-compatible proxies that may expect either header.
 final class DualAuthHTTPClient: HTTPClient {
-    private let underlying: URLSessionHTTPClientAdapter
+    private let proxySessionKey = UUID().uuidString
+    private let proxySessionConfiguration: URLSessionConfiguration
+    private let proxyAdapterLock = NSLock()
+    private var proxyAdapter: (generation: UInt64, adapter: URLSessionHTTPClientAdapter)?
+    private var underlying: URLSessionHTTPClientAdapter {
+        proxyAdapterLock.lock()
+        defer { proxyAdapterLock.unlock() }
+        let generation = AppProxyNetwork.sessionGeneration
+        if let current = proxyAdapter, current.generation == generation { return current.adapter }
+        let adapter = URLSessionHTTPClientAdapter(urlSession: AppProxyNetwork.cachedSession(
+            key: proxySessionKey, configuration: proxySessionConfiguration))
+        proxyAdapter = (generation, adapter)
+        return adapter
+    }
 
     /// - Parameter customUserAgent: see `EagerStreamingHTTPClient.init`.
     init(customUserAgent: String? = nil) {
@@ -1758,9 +1798,10 @@ final class DualAuthHTTPClient: HTTPClient {
             config.httpAdditionalHeaders = (config.httpAdditionalHeaders ?? [:]).merging(
                 ["User-Agent": ua]) { _, new in new }
         }
-        let session = URLSession(configuration: config)
-        self.underlying = URLSessionHTTPClientAdapter(urlSession: session)
+        self.proxySessionConfiguration = config
     }
+
+    deinit { AppProxyNetwork.releaseCachedSession(key: proxySessionKey) }
 
     func data(for request: HTTPRequest) async throws -> (Data, HTTPResponse) {
         try await underlying.data(for: request)
