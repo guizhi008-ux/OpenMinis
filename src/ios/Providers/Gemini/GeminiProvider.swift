@@ -11,15 +11,15 @@ private let thinkingLogger = AppLogger(category: "Thinking")
 /// URLSession.shared uses a 60-second timeoutIntervalForRequest which can kill
 /// long-running streams (e.g. large file_write generation). This session gives
 /// the server 10 minutes of idle time before timing out.
-private let geminiStreamingSession: URLSession = {
+private var geminiStreamingSession: URLSession {
     let config = URLSessionConfiguration.default
     config.timeoutIntervalForRequest = 600  // 10 minutes
-    let session = URLSession(configuration: config)
+    let session = AppProxyNetwork.cachedSession(key: "gemini.stream", configuration: config)
     // Evict this session's pooled (possibly stale) connections on network
     // transitions — see LLMSessionRegistry / Android #740.
     LLMSessionRegistry.shared.register(session)
     return session
-}()
+}
 
 /// LLMProvider implementation for Google Gemini models.
 /// Calls the Gemini REST API directly via URLSession (no SDK dependency).
