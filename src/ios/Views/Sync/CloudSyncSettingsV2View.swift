@@ -28,8 +28,17 @@ struct CloudSyncSettingsV2View: View {
     // SyncMigrationDetailView on the crashing pattern.
     private static let refreshIntervalSeconds: UInt64 = 5
 
+    @State private var proxyPaused = AppProxyNetwork.strictEnabled
+
     var body: some View {
         Form {
+            if proxyPaused {
+                Section {
+                    Text(SystemProxyBoundary.message)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Section {
                 Toggle(isOn: Binding(
                     get: { v2Enabled },
@@ -152,6 +161,9 @@ struct CloudSyncSettingsV2View: View {
                         .font(.caption)
                 }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appProxyDidChange)) { _ in
+            proxyPaused = AppProxyNetwork.strictEnabled
         }
         .navigationTitle("iCloud Sync")
 #if !os(macOS)
