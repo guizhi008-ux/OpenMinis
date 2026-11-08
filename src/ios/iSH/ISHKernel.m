@@ -39,6 +39,9 @@ static NSString *const AOJITEnabledDefaultsKey = @"aojitEnabled";
 #include <pthread.h>
 #include <sys/mman.h>
 #include <stdatomic.h>
+#include <stdbool.h>
+
+extern int ish_proxy_configure(const char *, uint16_t, const char *, const char *, bool);
 #include <stdlib.h>     // realpath
 #include <errno.h>
 #include <sys/syslimits.h> // PATH_MAX
@@ -1128,6 +1131,16 @@ static void handle_process_exit(struct task *task, int code) {
     ISHCommandCompletionCallback _commandCompletionCallback;
     NSTimer *_commandTimeoutTimer;
     dispatch_queue_t _commandQueue;
+}
+
+
+- (int)configureProxyWithHost:(NSString *)host
+                        port:(uint16_t)port
+                    username:(NSString *)username
+                    password:(NSString *)password
+                     enabled:(BOOL)enabled {
+    return ish_proxy_configure(host.UTF8String, port, username.UTF8String,
+                               password.UTF8String, enabled);
 }
 
 #pragma mark - AOJIT [T-ios-aojit]
