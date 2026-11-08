@@ -147,7 +147,9 @@ final class BrowserUseManager: NSObject, ObservableObject {
         self.currentProfile = profile
         let vp = Self.resolveViewport(profile: profile, width: viewportWidth, height: viewportHeight)
         self.currentViewport = vp
+        AppProxyWebKit.prepare(configuration)
         let wv = WKWebView(frame: CGRect(x: 0, y: 0, width: vp.width, height: vp.height), configuration: configuration)
+        AppProxyWebKit.register(wv)
         wv.customUserAgent = Self.resolveUA(profile: profile, customString: customString)
         wv.allowsBackForwardNavigationGestures = true
         self.webView = wv
@@ -214,7 +216,9 @@ final class BrowserUseManager: NSObject, ObservableObject {
         // overrides per-request as well.
         config.defaultWebpagePreferences.preferredContentMode = wantsDesktop ? .desktop : .mobile
 
+        AppProxyWebKit.prepare(config)
         let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: vp.width, height: vp.height), configuration: config)
+        AppProxyWebKit.register(webView)
         webView.customUserAgent = resolveUA(profile: profile, customString: customString)
         webView.allowsBackForwardNavigationGestures = true
         return webView
