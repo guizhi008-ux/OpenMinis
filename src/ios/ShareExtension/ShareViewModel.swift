@@ -121,6 +121,7 @@ final class ShareViewModel {
 
     /// Copy a local file URL to the shared container as an attachment.
     private func copyFileToShared(from url: URL) async {
+        guard url.isFileURL else { return }
         let accessed = url.startAccessingSecurityScopedResource()
         defer { if accessed { url.stopAccessingSecurityScopedResource() } }
 
@@ -163,7 +164,7 @@ final class ShareViewModel {
                 image = uiImage
             } else if let imageData = item as? Data {
                 image = UIImage(data: imageData)
-            } else if let url = item as? URL, let data = try? Data(contentsOf: url) {
+            } else if let url = item as? URL, url.isFileURL, let data = try? Data(contentsOf: url) {
                 image = UIImage(data: data)
             }
 
