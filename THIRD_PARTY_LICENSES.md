@@ -4,6 +4,14 @@ OpenMinis bundles, links, or depends on the following third-party components. Ve
 
 ## Native C/C++ dependencies (`deps/`)
 
+The app-only proxy additionally links [sing-box](https://github.com/SagerNet/sing-box)
+**v1.14.4**, copyright nekohasekai, under **GPL-3.0-or-later**, through the same
+Go runtime as rclone. Its exact source and dependency graph are pinned in
+`deps/rclone-mobile/go.mod` and `go.sum`; the license text is retained at
+`deps/licenses/sing-box-LICENSE`. Distributions of this modified app must supply
+the corresponding source and retain the applicable notices; adding the core
+does not grant a separate App Store distribution exception for that core.
+
 | Component | Version / Source | License | Notes |
 |---|---|---|---|
 | [iSH](https://github.com/OpenMinis/ish-arm64) (ARM64 fork) | git submodule `deps/ish` | **GPL-3.0** (post-`0e3a414` contributions also under GPL-2.0), with an App Store distribution exception (`LICENSE.IOS`) | Linux usermode emulation on iOS (ARM64 fork, aarch64 guest); core reason the app is GPLv3 |
