@@ -65,7 +65,9 @@ final class WebAppWebViewController: UIViewController, WKNavigationDelegate, WKU
             cfg.defaultWebpagePreferences.allowsContentJavaScript = true
         }
 
+        AppProxyWebKit.prepare(cfg)
         let wv = WKWebView(frame: view.bounds, configuration: cfg)
+        AppProxyWebKit.register(wv)
         wv.translatesAutoresizingMaskIntoConstraints = false
         wv.navigationDelegate = self
         wv.uiDelegate = self
