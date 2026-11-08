@@ -448,6 +448,10 @@ final class CloudSyncEngine: ObservableObject {
         if ud.object(forKey: "cloudSync.maxSyncFileSize") == nil { ud.set(1_048_576, forKey: "cloudSync.maxSyncFileSize") }
         self.maxSyncFileSize = ud.integer(forKey: "cloudSync.maxSyncFileSize")
 
+        proxyObserver = NotificationCenter.default.addObserver(forName: .appProxyDidChange, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.proxyModeChanged() }
+        }
+
         // Load persisted state
         if let data = try? Data(contentsOf: stateURL) {
             self.stateSerialization = try? JSONDecoder().decode(CKSyncEngine.State.Serialization.self, from: data)
@@ -474,6 +478,18 @@ final class CloudSyncEngine: ObservableObject {
         }
     }
 
+    private var proxyObserver: NSObjectProtocol?
+
+    private func proxyModeChanged() {
+        if AppProxyNetwork.strictEnabled {
+            suspendForZonePurge()
+            SyncDirtyScanner.shared.stop()
+            syncStatus = .error(SystemProxyBoundary.message)
+        } else if isEnabled && !SyncV2Bootstrap.shouldPauseV1() {
+            Task { await start() }
+        }
+    }
+
     // MARK: - Start / Stop
 
     /// [T-icloud-zone-delete-resurrect] Tear the CKSyncEngine down so the
@@ -488,7 +504,9 @@ final class CloudSyncEngine: ObservableObject {
     func suspendForZonePurge() {
         guard syncEngine != nil else { return }
         logger.info("[CloudSync] suspending engine for zone purge")
+        let stoppingEngine = syncEngine
         syncEngine = nil
+        Task { await stoppingEngine?.cancelOperations() }
         stopForegroundSyncTimer()
         pendingSendTask?.cancel()
         pendingSendTask = nil
@@ -540,6 +558,10 @@ final class CloudSyncEngine: ObservableObject {
     }
 
     func start() async {
+        guard !AppProxyNetwork.strictEnabled else {
+            syncStatus = .error(SystemProxyBoundary.message)
+            return
+        }
         guard isEnabled else {
             syncStatus = .disabled
             return
@@ -576,6 +598,7 @@ final class CloudSyncEngine: ObservableObject {
             UserDefaults.standard.removeObject(forKey: "cloudSync.backfillDone.v1")
         }
 
+        guard !AppProxyNetwork.strictEnabled else { return }
         let config: CKSyncEngine.Configuration
         if let state = stateSerialization {
             config = CKSyncEngine.Configuration(
@@ -655,6 +678,10 @@ final class CloudSyncEngine: ObservableObject {
 
     /// Build CKRecords from dirty records. Must be called OUTSIDE delegate callbacks.
     func refreshPendingChanges() async {
+        guard !AppProxyNetwork.strictEnabled else {
+            syncStatus = .error(SystemProxyBoundary.message)
+            return
+        }
         let refreshStart = CFAbsoluteTimeGetCurrent()
         let enabled = enabledRecordTypes
         let dirtyRecords = await ChatStore.shared.loadDirtyRecords()
@@ -740,12 +767,17 @@ final class CloudSyncEngine: ObservableObject {
     }
 
     func triggerFetch() async {
+        guard !AppProxyNetwork.strictEnabled else {
+            syncStatus = .error(SystemProxyBoundary.message)
+            return
+        }
         guard let engine = syncEngine else { return }
         syncStatus = .syncing
         // Call engine.fetchChanges() in a detached task to avoid re-entering
         // CKSyncEngine from @MainActor context that may overlap with delegate callbacks.
         do {
             try await Task.detached { [engine] in
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 try await engine.fetchChanges()
             }.value
             syncStatus = .idle
@@ -757,6 +789,10 @@ final class CloudSyncEngine: ObservableObject {
     }
 
     func triggerSend() async {
+        guard !AppProxyNetwork.strictEnabled else {
+            syncStatus = .error(SystemProxyBoundary.message)
+            return
+        }
         guard let engine = syncEngine else { return }
         guard !isSending else {
             logger.debug("[CloudSync] triggerSend skipped — already sending")
@@ -771,6 +807,7 @@ final class CloudSyncEngine: ObservableObject {
         syncStatus = .syncing
         do {
             try await Task.detached { [engine] in
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 try await engine.sendChanges()
             }.value
             syncStatus = .idle
@@ -804,6 +841,10 @@ final class CloudSyncEngine: ObservableObject {
     /// then re-fetch everything from iCloud and re-upload all local content.
     /// Local data (sessions, messages, skills, files) is never deleted.
     func forceFullSync() async {
+        guard !AppProxyNetwork.strictEnabled else {
+            syncStatus = .error(SystemProxyBoundary.message)
+            return
+        }
         let prior = await ChatStore.shared.countDirtyRecords()
         logger.info("[CloudSync] forceFullSync START priorDirty total=\(prior.total) byType=\(prior.byType)")
         // Start tallying uploads by type — the .sentRecordZoneChanges delegate
@@ -934,6 +975,7 @@ final class CloudSyncEngine: ObservableObject {
     ///
     /// Guarded by two UI confirmations — see CloudSyncSettingsView.
     func deleteAllCloudData() async throws {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         logger.warning("[CloudSync] Delete iCloud Data: STARTING destructive wipe")
         syncStatus = .syncing
         // [T-icloud-zone-delete-resurrect] This flow ends by re-uploading into
@@ -957,11 +999,15 @@ final class CloudSyncEngine: ObservableObject {
         var deletedZones = 0
         var failedZones: [String] = []
         do {
-            let zones = try await Task.detached { try await db.allRecordZones() }.value
+            let zones = try await Task.detached {
+                try SystemProxyBoundary.requireAllowed("iCloud")
+                return try await db.allRecordZones()
+            }.value
             logger.warning("[CloudSync] Delete iCloud Data: found \(zones.count) zones to delete")
             for zone in zones {
                 do {
                     _ = try await Task.detached {
+                        try SystemProxyBoundary.requireAllowed("iCloud")
                         try await db.deleteRecordZone(withID: zone.zoneID)
                     }.value
                     deletedZones += 1
@@ -1696,11 +1742,16 @@ final class CloudSyncEngine: ObservableObject {
     /// Subscribe to remote device zones so CKSyncEngine fetches their changes.
     /// Called outside delegate callbacks (e.g. from start or on foreground).
     func discoverDeviceZones() async {
+        guard !AppProxyNetwork.strictEnabled else {
+            syncStatus = .error(SystemProxyBoundary.message)
+            return
+        }
         do {
             // Run the network call off MainActor to avoid resume-hop CPU spike.
             let ownZoneName = DeviceIdentity.zoneName
             let db = container.privateCloudDatabase
             let newZoneIDs: [CKRecordZone.ID] = try await Task.detached {
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 let zones = try await db.allRecordZones()
                 return zones.compactMap { zone -> CKRecordZone.ID? in
                     let name = zone.zoneID.zoneName
@@ -3307,6 +3358,7 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
         _ context: CKSyncEngine.SendChangesContext,
         syncEngine: CKSyncEngine
     ) async -> CKSyncEngine.RecordZoneChangeBatch? {
+        guard !AppProxyNetwork.strictEnabled else { return nil }
         // No await — reads from thread-safe PendingRecordChanges, no re-entry possible.
         let (allRecords, allDeleteIDs) = pendingChanges.takeAll()
 
