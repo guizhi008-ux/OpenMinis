@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CCB5304EE0F7EBB2ADA135D5 /* AppProxyNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD27E8EE2CEC018023DC8CAE /* AppProxyNetwork.swift */; };
+		500C033C5D0D332AB40DE7CC /* AppProxyBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67921DB2D6738A391B67F51 /* AppProxyBridge.swift */; };
+		E3BACF38F08D0C33CBE9FC65 /* AppProxyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC822B6CC69B4053361C05C8 /* AppProxyStore.swift */; };
+		418208BCE7FD4F79F7206845 /* AppProxyWebKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD7FC0105D04474FB935B4E5 /* AppProxyWebKit.swift */; };
+		8D8E5026A459150C8EA62BB3 /* NetworkProxySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 397C2984ED2567BD7D5852A8 /* NetworkProxySettingsView.swift */; };
 		21FED4B7BB6F6D9476C9992E /* VoiceProvider+System.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88993FC8E3F0199C6638F664 /* VoiceProvider+System.swift */; };
 		241D530017827D7F0EB604DE /* VoiceProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2941B643B8A2F048A2B154E /* VoiceProviderFactory.swift */; };
 		2A4FD49F872431D703328384 /* VoiceOutputPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 424510790AF3FB2452D3CCE3 /* VoiceOutputPlayer.swift */; };
@@ -722,6 +727,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		CD27E8EE2CEC018023DC8CAE /* AppProxyNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/Proxy/AppProxyNetwork.swift; sourceTree = SOURCE_ROOT; };
+		B67921DB2D6738A391B67F51 /* AppProxyBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/Proxy/AppProxyBridge.swift; sourceTree = SOURCE_ROOT; };
+		DC822B6CC69B4053361C05C8 /* AppProxyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/Proxy/AppProxyStore.swift; sourceTree = SOURCE_ROOT; };
+		BD7FC0105D04474FB935B4E5 /* AppProxyWebKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/Proxy/AppProxyWebKit.swift; sourceTree = SOURCE_ROOT; };
+		397C2984ED2567BD7D5852A8 /* NetworkProxySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Settings/NetworkProxySettingsView.swift; sourceTree = SOURCE_ROOT; };
 		0ED149397BEA7E0408C92688 /* GroupVoiceModelsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupVoiceModelsView.swift; sourceTree = "<group>"; };
 		0F5379380323FA8C6477708C /* GroupSlotPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupSlotPicker.swift; sourceTree = "<group>"; };
 		16FF3462D09402F14B610CD6 /* VoiceWaveformView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceWaveformView.swift; sourceTree = "<group>"; };
@@ -2087,6 +2097,10 @@
 				E5TWG0002 /* InjectedTweakSelectorGuard.m */,
 				E5J000011 /* LoggingManager.swift */,
 				E5BADGE011 /* SessionBadgeStore.swift */,
+				CD27E8EE2CEC018023DC8CAE /* AppProxyNetwork.swift */,
+				B67921DB2D6738A391B67F51 /* AppProxyBridge.swift */,
+				DC822B6CC69B4053361C05C8 /* AppProxyStore.swift */,
+				BD7FC0105D04474FB935B4E5 /* AppProxyWebKit.swift */,
 				E5F100011 /* NetworkMonitor.swift */,
 				E5F100012 /* LLMSessionRegistry.swift */,
 				E5F100013 /* MinisUserAgent.swift */,
@@ -2621,6 +2635,7 @@
 				E5SHV0103 /* SharedFoldersSettingsView.swift */,
 				E5SHV0104 /* MountDetailView.swift */,
 				E5SOUL102 /* SoulSettingsView.swift */,
+				397C2984ED2567BD7D5852A8 /* NetworkProxySettingsView.swift */,
 				E5CVSET0000000000000A011 /* SettingsSheet.swift */,
 				E5CVSET0000000000000A012 /* AppearanceSettingsView.swift */,
 				E5SCH0014 /* HelperSettingsView.swift */,
@@ -3289,6 +3304,11 @@
 				E5CBR0002 /* ResourceSampler.swift in Sources */,
 				E5CDX0001 /* CrashDiagnosticsExport.swift in Sources */,
 				E5KVC0003 /* SafeKVCSetTrue.m in Sources */,
+				CCB5304EE0F7EBB2ADA135D5 /* AppProxyNetwork.swift in Sources */,
+				500C033C5D0D332AB40DE7CC /* AppProxyBridge.swift in Sources */,
+				E3BACF38F08D0C33CBE9FC65 /* AppProxyStore.swift in Sources */,
+				418208BCE7FD4F79F7206845 /* AppProxyWebKit.swift in Sources */,
+				8D8E5026A459150C8EA62BB3 /* NetworkProxySettingsView.swift in Sources */,
 				E5F100001 /* NetworkMonitor.swift in Sources */,
 				E5F100002 /* LLMSessionRegistry.swift in Sources */,
 				E5F100003 /* MinisUserAgent.swift in Sources */,
@@ -4048,7 +4068,7 @@
 					"$(ISH_LIBS_DIR)/libish_aot.a",
 				);
 				OTHER_SWIFT_FLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/MinisApp-Bridging-Header.h";
@@ -4107,7 +4127,7 @@
 					"$(ISH_LIBS_DIR)/libish_aot.a",
 				);
 				OTHER_SWIFT_FLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/MinisApp-Bridging-Header.h";
@@ -4134,7 +4154,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.15;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.ShareExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -4161,7 +4181,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.15;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.ShareExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519.ShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -4188,7 +4208,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.15;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.FileProvider;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519.FileProvider;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -4215,7 +4235,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.15;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.FileProvider;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519.FileProvider;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -4242,7 +4262,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.15;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.AgentWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519.AgentWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -4269,7 +4289,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.15;
-				PRODUCT_BUNDLE_IDENTIFIER = com.openminis.app.AgentWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = app.maroon1835.nance8519.AgentWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
