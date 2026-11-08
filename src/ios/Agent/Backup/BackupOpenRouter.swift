@@ -43,6 +43,11 @@ final class BackupOpenRouter: ObservableObject {
     static func handle(_ url: URL) -> Bool {
         guard isBackupPackage(url) else { return false }
 
+        do { try SystemProxyBoundary.requireLocalFileAccess(url) }
+        catch {
+            logger.error("[Backup] import paused: \(error.localizedDescription)")
+            return true // recognized package: never fall through into another importer
+        }
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
