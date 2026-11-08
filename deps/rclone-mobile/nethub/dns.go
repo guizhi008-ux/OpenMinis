@@ -85,12 +85,34 @@ func (h *Hub) dnsVia(name string) (via, rule string) {
 // reused (DNS over TCP), opened on demand.
 func (h *Hub) answerDNS(id, tag, resolver string, query []byte, tcp bool, upstream *net.Conn) ([]byte, error) {
 	h.udp.dnsQueries.Add(1)
+	if h.strict() {
+		// The device's LAN resolver need not be reachable from a remote
+		// node. Use a public resolver through the selected proxy, over TCP,
+		// even when the guest submitted UDP. No local DNS is used here.
+		ctx, cancel := context.WithTimeout(context.Background(), dnsTimeout)
+		defer cancel()
+		const remoteResolver = "1.1.1.1:53"
+		c, err := h.dial(ctx, h.Decide(tag, "1.1.1.1"), remoteResolver)
+		if err != nil {
+			h.udp.dnsFailures.Add(1)
+			return nil, err
+		}
+		defer c.Close()
+		if deadline, ok := ctx.Deadline(); ok {
+			c.SetDeadline(deadline)
+		}
+		answer, err := dnsTCPRoundTrip(c, query)
+		if err != nil {
+			h.udp.dnsFailures.Add(1)
+		}
+		return answer, stageErr("dns-proxy", err)
+	}
 	name, qtype := dnsQuestion(query)
 	via, rule := h.dnsVia(name)
 	ctx, cancel := context.WithTimeout(context.Background(), dnsTimeout)
 	defer cancel()
 	t0 := time.Now()
-	if qtype == dnsmessage.TypeAAAA && name != "" && !h.ts.IsTailnetName(name) {
+	if qtype == dnsmessage.TypeAAAA && name != "" && (h.ts == nil || !h.ts.IsTailnetName(name)) {
 		// A program that gets an AAAA first connects over IPv6, and the
 		// shell's forwarding has already accepted that connection, so it
 		// cannot fall back to IPv4 when the exit node has no IPv6 path:
@@ -167,6 +189,12 @@ func dnsRcode(msg []byte) string {
 // tailnet address, directly otherwise - never through an exit node (that
 // resolver is the device's, it may not exist anywhere else).
 func (h *Hub) resolverDial(ctx context.Context, network, resolver string) (net.Conn, error) {
+	if h.strict() {
+		if network != "tcp" {
+			return nil, stageErr("dns-proxy", errors.New("strict DNS requires proxied TCP"))
+		}
+		return h.dial(ctx, h.Decide("shell", hostOf(resolver)), resolver)
+	}
 	if h.tailscaleUp() && h.isTailnetDest(hostOf(resolver)) {
 		c, err := h.ts.Dial(ctx, network, resolver)
 		return c, stageErr("dns-tailnet", err)
