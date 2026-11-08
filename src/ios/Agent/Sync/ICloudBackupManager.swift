@@ -87,7 +87,8 @@ final class ICloudBackupManager: ObservableObject {
     // MARK: - iCloud Container
 
     private var iCloudContainerURL: URL? {
-        fm.url(forUbiquityContainerIdentifier: containerID)
+        guard !AppProxyNetwork.strictEnabled else { return nil }
+        return fm.url(forUbiquityContainerIdentifier: containerID)
     }
 
     var isICloudAvailable: Bool { iCloudContainerURL != nil }
@@ -131,6 +132,7 @@ final class ICloudBackupManager: ObservableObject {
     // MARK: - Backup
 
     func backup(category: BackupCategory) async throws {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         guard !isBackingUp else { return }
         guard let destDir = backupDirectoryURL else {
             throw BackupError.iCloudUnavailable
@@ -184,6 +186,7 @@ final class ICloudBackupManager: ObservableObject {
         progress = 0.8
         statusMessage = "Uploading to iCloud..."
 
+        try SystemProxyBoundary.requireAllowed("iCloud backup")
         // Move ZIP to iCloud
         let destURL = destDir.appendingPathComponent(zipName)
         if fm.fileExists(atPath: destURL.path) {
@@ -408,6 +411,10 @@ final class ICloudBackupManager: ObservableObject {
 
     @discardableResult
     func listBackups() async -> [BackupEntry] {
+        guard !AppProxyNetwork.strictEnabled else {
+            statusMessage = SystemProxyBoundary.message
+            return []
+        }
         guard let root = backupsRootURL else {
             availableBackups = []
             return []
@@ -491,6 +498,7 @@ final class ICloudBackupManager: ObservableObject {
     // MARK: - Restore
 
     func restore(from entry: BackupEntry) async throws {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         guard !isRestoring else { return }
 
         isRestoring = true
@@ -621,6 +629,7 @@ final class ICloudBackupManager: ObservableObject {
     // MARK: - Download from iCloud
 
     private func ensureDownloaded(_ url: URL) async throws {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         let values = try url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey])
         if values.ubiquitousItemDownloadingStatus == .current {
             return
@@ -644,6 +653,7 @@ final class ICloudBackupManager: ObservableObject {
     // MARK: - Delete Backup
 
     func deleteBackup(_ entry: BackupEntry) throws {
+        try SystemProxyBoundary.requireAllowed("iCloud")
         try fm.removeItem(at: entry.url)
         availableBackups.removeAll { $0.id == entry.id }
     }
