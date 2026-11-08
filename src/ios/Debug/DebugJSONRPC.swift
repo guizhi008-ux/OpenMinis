@@ -1311,6 +1311,9 @@ final class DebugJSONRPC: @unchecked Sendable {
     ///     "modificationDate": "...", "creationDate": "...", "fields": {...} }, ...] }
     ///   { "ok": false, "errorCode": Int, "ckCode": Int, "description": "..." }
     private func handleSyncCKQuery(params: [String: Any]) async -> Any {
+        guard !AppProxyNetwork.strictEnabled else {
+            return ["ok": false, "description": SystemProxyBoundary.message]
+        }
         let recordType = (params["recordType"] as? String) ?? "MessageV2"
         let zoneName = (params["zone"] as? String) ?? "minis-shared"
         let predicateString = (params["predicate"] as? String) ?? "TRUEPREDICATE"
@@ -1342,6 +1345,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         let zoneID = CKRecordZone.ID(zoneName: zoneName)
         let container = CKContainer(identifier: "iCloud.com.openminis.app")
         do {
+            try SystemProxyBoundary.requireAllowed("iCloud")
             let result = try await container.privateCloudDatabase.records(
                 matching: query,
                 inZoneWith: zoneID,
@@ -1394,8 +1398,12 @@ final class DebugJSONRPC: @unchecked Sendable {
     /// (minis-shared / minis-devices / minis-secrets) when migration
     /// counters look suspect.
     private func handleSyncAllZones() async -> Any {
+        guard !AppProxyNetwork.strictEnabled else {
+            return ["ok": false, "description": SystemProxyBoundary.message]
+        }
         let container = CKContainer(identifier: "iCloud.com.openminis.app")
         do {
+            try SystemProxyBoundary.requireAllowed("iCloud")
             let zones = try await container.privateCloudDatabase.allRecordZones()
             return [
                 "ok": true,
@@ -1442,6 +1450,9 @@ final class DebugJSONRPC: @unchecked Sendable {
     ///   recordTypes (optional): override the default per-zone type
     ///     list. Useful for ad-hoc probes.
     private func handleSyncZoneStats(params: [String: Any]) async -> Any {
+        guard !AppProxyNetwork.strictEnabled else {
+            return ["ok": false, "description": SystemProxyBoundary.message]
+        }
         let containerId = "iCloud.com.openminis.app"
         let container = CKContainer(identifier: containerId)
         let db = container.privateCloudDatabase
@@ -1588,10 +1599,12 @@ final class DebugJSONRPC: @unchecked Sendable {
             let resp: (matchResults: [(CKRecord.ID, Swift.Result<CKRecord, Error>)],
                        queryCursor: CKQueryOperation.Cursor?)
             if let cur = cursor {
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 resp = try await db.records(continuingMatchFrom: cur,
                                             desiredKeys: desired,
                                             resultsLimit: CKQueryOperation.maximumResults)
             } else {
+                try SystemProxyBoundary.requireAllowed("iCloud")
                 resp = try await db.records(matching: query,
                                             inZoneWith: zoneID,
                                             desiredKeys: desired,
@@ -1939,7 +1952,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         // where the FileProvider extension writes its diagnostic log.
         if stripped.hasPrefix("AppGroup/") {
             let fm = FileManager.default
-            if let container = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.openminis.app") {
+            if let container = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.927f95962c559f66.1") {
                 let relative = String(stripped.dropFirst("AppGroup/".count))
                 return relative.isEmpty ? container : container.appendingPathComponent(relative)
             }
@@ -2667,7 +2680,7 @@ final class DebugJSONRPC: @unchecked Sendable {
         config.timeoutIntervalForRequest = 8.0
         config.timeoutIntervalForResource = 10.0
         config.waitsForConnectivity = false
-        let session = URLSession(configuration: config)
+        let session = AppProxyNetwork.makeSession(configuration: config)
 
         do {
             let (data, response) = try await session.data(for: request)
