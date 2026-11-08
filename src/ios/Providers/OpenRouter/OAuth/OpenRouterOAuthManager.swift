@@ -43,6 +43,7 @@ final class OpenRouterOAuthManager: NSObject, ObservableObject {
     }
 
     func login(instanceId: String) async throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         logger.info("=== OpenRouter OAuth login started (instance: \(instanceId)) ===")
         callbackServer?.stop()
         callbackServer = nil
@@ -75,7 +76,7 @@ final class OpenRouterOAuthManager: NSObject, ObservableObject {
         logger.info("Authorization URL: \(authorizationURL.absoluteString)")
 
         // 3. Open in-app Safari
-        presentSafariViewController(url: authorizationURL)
+        try presentSafariViewController(url: authorizationURL)
         logger.info("Opened in-app Safari for OpenRouter authorization")
 
         // 4. Wait for callback (5 min timeout)
@@ -136,7 +137,7 @@ final class OpenRouterOAuthManager: NSObject, ObservableObject {
 
         logger.info("POST \(self.keysURL)")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await AppProxyNetwork.shared.data(for: request)
         let http = response as? HTTPURLResponse
         let statusCode = http?.statusCode ?? -1
         let responseBody = String(data: data, encoding: .utf8) ?? "<binary>"
@@ -167,7 +168,8 @@ final class OpenRouterOAuthManager: NSObject, ObservableObject {
 
     // MARK: - In-App Safari
 
-    private func presentSafariViewController(url: URL) {
+    private func presentSafariViewController(url: URL) throws {
+        try SystemProxyBoundary.requireAllowed("System-hosted sign-in")
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first,
               let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
