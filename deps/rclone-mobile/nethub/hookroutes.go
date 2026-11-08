@@ -89,6 +89,13 @@ func (h *Hub) HookRoutesWithResolvers(tag string, local []netip.Prefix, resolver
 			out.Resolvers = append(out.Resolvers, r.String())
 		}
 	}
+	if h.strict() {
+		out.Everything = true
+		out.DNSIntercept = true
+		out.Hook = []string{"0.0.0.0/0", "::/0"}
+		out.UDPHook = []string{"0.0.0.0/0", "::/0"}
+		return out
+	}
 	var tailnet []netip.Prefix
 	if h.tailscaleUp() {
 		out.Tailnet = true
