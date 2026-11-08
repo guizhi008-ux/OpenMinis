@@ -327,6 +327,8 @@ struct MinisAudioPreviewView: View {
     }
 
     private func loadArtwork() {
+        guard fileURL.isFileURL else { return }
+        do { try SystemProxyBoundary.requireLocalFileAccess(fileURL) } catch { return }
         let url = fileURL
         Task.detached(priority: .userInitiated) {
             let asset = AVAsset(url: url)
