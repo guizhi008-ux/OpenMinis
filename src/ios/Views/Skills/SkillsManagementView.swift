@@ -1150,7 +1150,9 @@ private struct SkillBrowserWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         // Use mobile UA so GitHub serves mobile-friendly pages with standard URL routing
         config.applicationNameForUserAgent = "MinisApp Mobile Safari"
+        AppProxyWebKit.prepare(config)
         let webView = WKWebView(frame: .zero, configuration: config)
+        AppProxyWebKit.register(webView)
         webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
         webView.allowsBackForwardNavigationGestures = true
         // KVO to track URL changes (GitHub SPA uses pushState)
