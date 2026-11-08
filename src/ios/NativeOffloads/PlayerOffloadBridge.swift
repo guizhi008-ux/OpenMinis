@@ -90,6 +90,12 @@ private class PlayerSession {
         guestPath: String,
         completion: @escaping (NSDictionary?, NSString?) -> Void
     ) {
+        guard url.isFileURL else {
+            completion(nil, "Native playback requires a downloaded local file." as NSString)
+            return
+        }
+        do { try SystemProxyBoundary.requireLocalFileAccess(url) }
+        catch { completion(nil, error.localizedDescription as NSString); return }
         let sessionId = UUID().uuidString.prefix(8).lowercased()
         let mediaType = detectMediaType(for: url)
 
