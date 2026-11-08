@@ -31,8 +31,17 @@ struct MountedFoldersSettingsView: View {
     @State private var pendingMount: PendingMount?
     @State private var errorText: String?
 
+    @State private var proxyPaused = AppProxyNetwork.strictEnabled
+
     var body: some View {
         List {
+            if proxyPaused {
+                Section {
+                    Text(SystemProxyBoundary.message)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Section {
                 InfoBanner()
             }
@@ -92,12 +101,15 @@ struct MountedFoldersSettingsView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .appProxyDidChange)) { _ in
+            proxyPaused = AppProxyNetwork.strictEnabled
+        }
         .navigationTitle("Mount External Folders")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    showingPicker = true
+                    if proxyPaused { errorText = SystemProxyBoundary.message } else { showingPicker = true }
                 } label: {
                     Image(systemName: "plus")
                 }
