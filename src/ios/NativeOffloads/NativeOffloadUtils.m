@@ -6,6 +6,7 @@
 //
 
 #import "NativeOffloadUtils.h"
+#import "librclone.h"
 #include "kernel/fs.h"
 #include "kernel/task.h"
 #include "fs/fd.h"
@@ -20,6 +21,27 @@ NSString *const NOFF_ERR_NOT_AVAILABLE              = @"not_available";
 NSString *const NOFF_ERR_INVALID_ARGS               = @"invalid_args";
 NSString *const NOFF_ERR_NO_DATA                    = @"no_data";
 NSString *const NOFF_ERR_INTERNAL_ERROR             = @"internal_error";
+
+BOOL noff_strict_proxy_enabled(void) {
+    return MinisAppProxyStrictEnabled() != 0;
+}
+
+NSString *noff_strict_proxy_message(void) {
+    return @"Strict proxy mode pauses Apple weather, maps, network-assisted location and cloud speech because iOS cannot route these system services through the app proxy. Saved settings are preserved. Use supported on-device speech or a provider routed through the app proxy.";
+}
+
+NSError *noff_strict_proxy_error(void) {
+    return [NSError errorWithDomain:@"SystemProxyBoundary" code:1
+                          userInfo:@{NSLocalizedDescriptionKey: noff_strict_proxy_message()}];
+}
+
+BOOL noff_reject_strict_proxy(NSString *tool, NSString *action,
+                              int stdout_fd, BOOL compact, BOOL quiet) {
+    if (!noff_strict_proxy_enabled()) return NO;
+    noff_emit_json(stdout_fd, noff_json_error(tool, action, NOFF_ERR_NOT_AVAILABLE,
+                                           noff_strict_proxy_message()), compact, quiet);
+    return YES;
+}
 
 // ── Argument helpers ──
 
