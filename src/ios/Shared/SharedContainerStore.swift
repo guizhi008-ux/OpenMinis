@@ -3,7 +3,7 @@ import Foundation
 /// Reads and writes PendingShare data to the App Group shared container.
 /// Compiled into both the main app target and the Share Extension target.
 enum SharedContainerStore {
-    static let appGroupID = "group.com.openminis.app"
+    static let appGroupID = "group.927f95962c559f66.1"
 
     private static let pendingShareKey = "pendingShare"
 
