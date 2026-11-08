@@ -686,7 +686,7 @@ private struct MinisImageView: View {
         } else if let url {
             // Fall through to default async loading for non-minis URLs
             let maxH = UIScreen.main.bounds.height / 2
-            AsyncImage(url: url) { phase in
+            ProxyAsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
                     image
@@ -1191,3 +1191,27 @@ struct MinisHTMLPreviewView: View {
 // [T-ios-file-preview-stale-cache] reloadData() workaround is obsolete with
 // the native presentation, which builds a fresh preview per open.
 
+
+
+/// SwiftUI.AsyncImage owns an internal unmanaged session. Keep remote markdown
+/// image requests on the same route as native provider and download requests.
+private struct ProxyAsyncImage<Content: View>: View {
+    let url: URL
+    @ViewBuilder var content: (AsyncImagePhase) -> Content
+    @State private var phase: AsyncImagePhase = .empty
+    var body: some View {
+        content(phase).task(id: url) {
+            phase = .empty
+            do {
+                let (data, response) = try await AppProxyNetwork.shared.data(from: url)
+                if let response = response as? HTTPURLResponse, !(200...299).contains(response.statusCode) {
+                    throw URLError(.badServerResponse)
+                }
+                guard !Task.isCancelled, let image = UIImage(data: data) else { throw URLError(.cannotDecodeContentData) }
+                phase = .success(Image(uiImage: image))
+            } catch {
+                if !Task.isCancelled { phase = .failure(error) }
+            }
+        }
+    }
+}
