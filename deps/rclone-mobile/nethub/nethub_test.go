@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 // fakeTailnet routes its "tailnet" connections to a local echo server and
 // records that it was used.
 type fakeTailnet struct {
+	mu       sync.Mutex
 	running  bool
 	exitNode bool
 	prefixes []netip.Prefix
@@ -33,9 +35,17 @@ func (f *fakeTailnet) IsTailnetName(h string) bool {
 	return f.suffix != "" && strings.HasSuffix(h, "."+f.suffix)
 }
 func (f *fakeTailnet) Dial(ctx context.Context, n, a string) (net.Conn, error) {
+	f.mu.Lock()
 	f.dials = append(f.dials, a)
+	f.mu.Unlock()
 	var d net.Dialer
 	return d.DialContext(ctx, n, f.target)
+}
+
+func (f *fakeTailnet) dialed() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.dials...)
 }
 
 func newFake() *fakeTailnet {
