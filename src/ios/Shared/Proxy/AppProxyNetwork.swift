@@ -89,16 +89,22 @@ enum AppProxyNetwork {
         if !snapshot.ready {
             result.protocolClasses = [AppProxyBlockedProtocol.self] + (result.protocolClasses ?? [])
         }
-        // Also block non-URLProtocol paths (including WebSocket tasks) at a
-        // dead loopback proxy. Never leave an absent upstream as "no proxy".
-        let port = snapshot.ready ? snapshot.httpPort : 1
-        let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: UInt16(port))!)
-        var proxy = ProxyConfiguration(httpCONNECTProxy: endpoint, tlsOptions: nil)
-        proxy.applyCredential(username: snapshot.username, password: snapshot.password)
-        proxy.allowFailover = false
-        proxy.matchDomains = [""]
-        proxy.excludedDomains = ["localhost", "127.0.0.1", "::1"]
-        result.proxyConfigurations = [proxy]
+        if #available(iOS 17.0, *) {
+            // Also block non-URLProtocol paths (including WebSocket tasks) at a
+            // dead loopback proxy. Never leave an absent upstream as "no proxy".
+            let port = snapshot.ready ? snapshot.httpPort : 1
+            let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: UInt16(port))!)
+            var proxy = ProxyConfiguration(httpCONNECTProxy: endpoint, tlsOptions: nil)
+            proxy.applyCredential(username: snapshot.username, password: snapshot.password)
+            proxy.allowFailover = false
+            proxy.matchDomains = [""]
+            proxy.excludedDomains = ["localhost", "127.0.0.1", "::1"]
+            result.proxyConfigurations = [proxy]
+        } else if snapshot.ready {
+            // ProxyConfiguration requires iOS 17; older systems have no
+            // typed-proxy API, so fail closed instead of connecting directly.
+            result.protocolClasses = [AppProxyBlockedProtocol.self] + (result.protocolClasses ?? [])
+        }
         return result
     }
 
